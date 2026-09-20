@@ -1,0 +1,19 @@
+[Unit]
+Description=news-bot Prometheus (TSDB tai nguyen, giu 15 ngay)
+After=news-node-exporter.service
+Wants=news-node-exporter.service news-pg-exporter.service
+
+[Service]
+Type=exec
+WorkingDirectory=__REPO__
+# serve-prom tu render lai .obs/prometheus.yml truoc khi chay, nen doi cong
+# trong config/ports.env chi can restart unit nay.
+ExecStart=/usr/bin/env bash "__REPO__/scripts/obs.sh" serve-prom
+Restart=always
+RestartSec=10
+# TSDB can vai giay de replay WAL sau khi tat dot ngot.
+TimeoutStartSec=120
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=default.target

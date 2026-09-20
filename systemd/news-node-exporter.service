@@ -1,0 +1,13 @@
+[Unit]
+Description=news-bot node_exporter (so lieu tai nguyen may)
+After=network.target
+
+[Service]
+Type=exec
+WorkingDirectory=__REPO__
+ExecStart=/usr/bin/env bash "__REPO__/scripts/obs.sh" serve-node
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

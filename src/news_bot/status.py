@@ -28,20 +28,34 @@ log = get_logger(__name__)
 _TAG = re.compile(r"<[^>]+>")
 
 
-def _read_port() -> tuple[str, int]:
-    """Cong va host lay tu config/ports.env, env de o ngoai de ghi de."""
-    host, port = "127.0.0.1", 18081
+def _ports() -> dict[str, str]:
+    """Doc config/ports.env. Env de o ngoai de ghi de."""
+    out = {"NEWS_BIND_HOST": "127.0.0.1", "NEWS_STATUS_PORT": "18081",
+           "NEWS_GRAFANA_PORT": "18091"}
     ports_file = Path(REPO_ROOT) / "config" / "ports.env"
     if ports_file.exists():
         for line in ports_file.read_text(encoding="utf-8").splitlines():
             line = line.strip()
-            if line.startswith("NEWS_STATUS_PORT="):
-                port = int(line.split("=", 1)[1])
-            elif line.startswith("NEWS_BIND_HOST="):
-                host = line.split("=", 1)[1]
-    return os.environ.get("NEWS_BIND_HOST", host), int(
-        os.environ.get("NEWS_STATUS_PORT", port)
-    )
+            if line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            if key in out:
+                out[key] = value.strip()
+    for key in out:
+        out[key] = os.environ.get(key, out[key])
+    return out
+
+
+def _read_port() -> tuple[str, int]:
+    """Cong va host cua chinh trang nay."""
+    p = _ports()
+    return p["NEWS_BIND_HOST"], int(p["NEWS_STATUS_PORT"])
+
+
+def _grafana_url() -> str:
+    """Trang nay lo nghiep vu; tai nguyen may nam ben Grafana - khong lam ca hai."""
+    p = _ports()
+    return f"http://{p['NEWS_BIND_HOST']}:{p['NEWS_GRAFANA_PORT']}/d/news-host"
 
 
 def _rows(sql: str, params: dict | None = None) -> list[dict]:
@@ -182,7 +196,10 @@ def render() -> str:
         "<h1>Bản tin hằng ngày — trạng thái</h1>",
         f"<p class='sub'>{_esc(today_in(s.news_timezone).strftime('%d/%m/%Y'))} · "
         f"provider <b>{_esc(' → '.join(provider_chain()) or 'chưa cấu hình')}</b>"
-        f"{down_note} · tự làm mới mỗi 60 giây</p>",
+        f"{down_note} · tự làm mới mỗi 60 giây<br>"
+        f"Trang này lo <b>nghiệp vụ</b>. CPU/RAM/đĩa/mạng xem ở "
+        f"<a href='{_esc(_grafana_url())}' target='_blank' rel='noopener'>Grafana</a> "
+        f"(<code>./scripts/obs.sh start</code>).</p>",
     ]
 
     parts.append("<div class='cards'>")

@@ -60,5 +60,79 @@ services:
       - "8080:8080"
     command: standalone
 
+
+  # ===== Quan sat TAI NGUYEN MAY =====
+  # Co y khong chong lan trang trang thai (news_bot.status): trang do lo nghiep
+  # vu - run, chi phi LLM, suc khoe nguon, dung luong bang. Bon service duoi day
+  # chi lo CPU/RAM/dia/mang va runtime cua Postgres.
+  #
+  # Pipeline khong duoc scrape: no chay 1 lan/ngay trong vai phut, con Prometheus
+  # pull moi 15 giay - phan lon luot scrape se truot. So lieu do da o trong
+  # Postgres va trang :18081 doc thang tu do.
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    restart: unless-stopped
+    # Can nhin vao namespace cua host moi bao dung, khong phai cua container.
+    pid: host
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/host/root"
+      - "--collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|host/root/(dev|proc|sys)|var/lib/docker/.+)($$|/)"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro,rslave
+    ports:
+      - "9100:9100"
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.16.0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATA_SOURCE_NAME: "postgresql://news:news@postgres:5432/news?sslmode=disable"
+    ports:
+      - "9187:9187"
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./config/observability/prometheus.docker.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana-oss:11.5.1
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # Stack dev. Xem thi khong can dang nhap; sua dashboard thi admin/admin.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./config/observability/datasource.docker.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+      - ./config/observability/dashboards.docker.yml:/etc/grafana/provisioning/dashboards/news.yml:ro
+      - ./config/observability/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports:
+      - "3000:3000"
+
 volumes:
   pgdata:
+  promdata:
+  grafanadata:

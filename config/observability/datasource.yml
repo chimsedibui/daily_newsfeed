@@ -1,0 +1,13 @@
+# Template - render ra .obs/provisioning/datasources/prometheus.yml
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: news-prometheus
+    type: prometheus
+    access: proxy
+    url: http://__BIND__:__PROM_PORT__
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 15s

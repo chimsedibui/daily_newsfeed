@@ -1,0 +1,30 @@
+# Template - scripts/obs.sh render ra .obs/prometheus.yml (thay __*__ bang cong that).
+#
+# CHI scrape tai nguyen may va tien trinh Postgres. KHONG scrape pipeline:
+# job chay 1 lan/ngay trong vai phut, mo hinh pull cua Prometheus se truot phan
+# lon luot scrape. So lieu pipeline da nam trong Postgres va trang :18081 doc
+# thang tu do.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    stack: news-bot
+
+scrape_configs:
+  # Tai nguyen may: CPU, RAM, dia, mang, load.
+  - job_name: node
+    static_configs:
+      - targets: ["__BIND__:__NODE_PORT__"]
+        labels:
+          host: wsl
+
+  # Runtime cua Postgres: ket noi, cache hit, commit/rollback, deadlock.
+  # Khong lay kich thuoc bang o day - trang :18081 da co muc do.
+  - job_name: postgres
+    static_configs:
+      - targets: ["__BIND__:__PGEXP_PORT__"]
+
+  # Prometheus tu theo doi chinh no - de biet scrape co dang tre khong.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["__BIND__:__PROM_PORT__"]

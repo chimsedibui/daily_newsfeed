@@ -13,10 +13,14 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST="$HOME/.config/systemd/user"
 UNITS=(news-postgres.service news-airflow.service news-status.service
-       news-backup.service news-backup.timer)
+       news-backup.service news-backup.timer
+       news-node-exporter.service news-pg-exporter.service
+       news-prometheus.service news-grafana.service)
 
 if [ "${1:-install}" = "uninstall" ]; then
-    systemctl --user disable --now news-airflow.service news-status.service         news-postgres.service news-backup.timer 2>/dev/null || true
+    systemctl --user disable --now news-airflow.service news-status.service \
+        news-grafana.service news-prometheus.service news-pg-exporter.service \
+        news-node-exporter.service news-postgres.service news-backup.timer 2>/dev/null || true
     for u in "${UNITS[@]}"; do rm -f "$DEST/$u"; done
     systemctl --user daemon-reload
     echo "da go cac unit"
@@ -48,6 +52,13 @@ systemctl --user enable --now news-backup.timer
 echo
 echo "Airflow chua duoc bat tu dong. Bat khi muon lich chay that:"
 echo "  systemctl --user enable --now news-airflow.service"
+echo
+# Cung ly do nhu Airflow: khong bat san. Ngoai ra bon unit nay can binaries
+# duoc tai ve truoc, neu bat ma chua cai thi chung se restart-loop.
+echo "Quan sat tai nguyen may (Grafana) cung chua bat. Cai binaries roi bat:"
+echo "  ./scripts/obs.sh install"
+echo "  systemctl --user enable --now news-node-exporter.service news-pg-exporter.service"
+echo "  systemctl --user enable --now news-prometheus.service news-grafana.service"
 echo
 if [ "$(loginctl show-user "$USER" --property=Linger --value 2>/dev/null)" != "yes" ]; then
     echo "CANH BAO: linger dang TAT - cac unit se dung khi ban dong phien WSL."

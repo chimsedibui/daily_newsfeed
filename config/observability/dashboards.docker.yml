@@ -1,0 +1,13 @@
+# Ban cho docker-compose. Ban rootless duoc render tu dashboards.yml (__REPO__).
+apiVersion: 1
+
+providers:
+  - name: news-bot
+    folder: news-bot
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

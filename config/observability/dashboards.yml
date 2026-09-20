@@ -1,0 +1,14 @@
+# Template - render ra .obs/provisioning/dashboards/news.yml
+# Dashboard doc thang tu repo, nen sua JSON roi restart Grafana la thay ngay.
+apiVersion: 1
+
+providers:
+  - name: news-bot
+    folder: news-bot
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: __REPO__/config/observability/dashboards
+      foldersFromFilesStructure: false

@@ -1,0 +1,15 @@
+[Unit]
+Description=news-bot postgres_exporter (so lieu runtime cua Postgres)
+After=news-postgres.service
+Requires=news-postgres.service
+
+[Service]
+Type=exec
+WorkingDirectory=__REPO__
+ExecStart=/usr/bin/env bash "__REPO__/scripts/obs.sh" serve-pgexp
+# Postgres co the chua nhan ket noi ngay - exporter tu thu lai, cu de no restart.
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

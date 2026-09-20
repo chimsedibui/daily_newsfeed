@@ -18,3 +18,6 @@ data/
 # Airflow local (scripts/airflow.sh)
 .airflow/
 .venv-airflow/
+
+# Prometheus TSDB + Grafana data + config da render (scripts/obs.sh)
+.obs/

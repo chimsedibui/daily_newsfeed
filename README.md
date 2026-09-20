@@ -6,6 +6,7 @@ Bot tổng hợp tin tức Việt Nam hằng ngày, bắn bản tin lên **Googl
 - **Xử lý**: LangGraph (gom trùng → xếp hạng → tóm tắt → biên tập → render card).
 - **Trace & logging**: Postgres (`pipeline_run`, `node_span`, `llm_call`, `app_log`, `source_health`).
 - **Lịch chạy**: Airflow DAG `daily_news_digest`, 08:00 giờ VN, T2–T6.
+- **Quan sát**: trang trạng thái :18081 lo nghiệp vụ, Grafana :18091 lo tài nguyên máy — [docs/OPERATIONS.md](docs/OPERATIONS.md#6-quan-sát-tài-nguyên-máy--grafana).
 
 Báo cáo khảo sát nguồn tin và giải thích kiến trúc: [docs/REPORT.md](docs/REPORT.md).
 

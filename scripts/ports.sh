@@ -19,6 +19,10 @@ fi
 : "${NEWS_PG_PORT:=18432}"
 : "${NEWS_AIRFLOW_PORT:=18080}"
 : "${NEWS_STATUS_PORT:=18081}"
+: "${NEWS_PROM_PORT:=18090}"
+: "${NEWS_GRAFANA_PORT:=18091}"
+: "${NEWS_NODE_EXPORTER_PORT:=18092}"
+: "${NEWS_PG_EXPORTER_PORT:=18093}"
 : "${NEWS_BIND_HOST:=127.0.0.1}"
 
 # Ai dang giu cong nay? In "" neu trong.
@@ -49,7 +53,10 @@ PYEOF
 status=0
 printf "%-22s %-7s %s\n" "DICH VU" "CONG" "TRANG THAI"
 for entry in "Postgres:$NEWS_PG_PORT" "Airflow:$NEWS_AIRFLOW_PORT" \
-             "Trang trang thai:$NEWS_STATUS_PORT"; do
+             "Trang trang thai:$NEWS_STATUS_PORT" \
+             "Prometheus:$NEWS_PROM_PORT" "Grafana:$NEWS_GRAFANA_PORT" \
+             "node_exporter:$NEWS_NODE_EXPORTER_PORT" \
+             "postgres_exporter:$NEWS_PG_EXPORTER_PORT"; do
     name="${entry%%:*}"
     port="${entry##*:}"
     owner="$(port_owner "$port")"
@@ -57,9 +64,9 @@ for entry in "Postgres:$NEWS_PG_PORT" "Airflow:$NEWS_AIRFLOW_PORT" \
         printf "%-22s %-7s trong\n" "$name" "$port"
     else
         printf "%-22s %-7s DANG BI CHIEM  %s\n" "$name" "$port" "$owner"
-        # Postgres cua chinh repo nay giu cong la binh thuong.
+        # Service cua chinh repo nay giu cong la binh thuong.
         case "$owner" in
-            *postgres*) ;;
+            *postgres*|*prometheus*|*grafana*|*node_export*|*postgres_exp*) ;;
             *) status=1 ;;
         esac
     fi
