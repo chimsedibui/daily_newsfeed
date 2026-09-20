@@ -123,8 +123,8 @@ def already_sent_urls(days: int = 7) -> set[str]:
 
 _UPSERT_SUMMARY = text(
     """
-    INSERT INTO article_summary (article_id, run_id, model, summary, bullets, topics, importance)
-    VALUES (:article_id, :run_id, :model, :summary,
+    INSERT INTO article_summary (article_id, run_id, summary, bullets, topics, importance)
+    VALUES (:article_id, :run_id, :summary,
             CAST(:bullets AS jsonb), CAST(:topics AS jsonb), :importance)
     ON CONFLICT (article_id, run_id) DO UPDATE
     SET summary = EXCLUDED.summary, bullets = EXCLUDED.bullets,
@@ -143,7 +143,6 @@ def save_summaries(run_id: str, summaries: Iterable[Summary]) -> None:
                 {
                     "article_id": x.article_id,
                     "run_id": run_id,
-                    "model": x.model,
                     "summary": x.summary,
                     "bullets": json.dumps(x.bullets, ensure_ascii=False),
                     "topics": json.dumps(x.topics, ensure_ascii=False),

@@ -29,13 +29,6 @@ _CURRENT_SPAN: ContextVar[str | None] = ContextVar("current_span_id", default=No
 _PREVIEW_LIMIT = 2000
 
 
-def current_run_id() -> str | None:
-    return _CURRENT_RUN.get()
-
-
-def current_span_id() -> str | None:
-    return _CURRENT_SPAN.get()
-
 
 def _jsonable(value: Any) -> Any:
     """Thu gon payload truoc khi ghi DB - trace khong phai noi luu ban goc."""
@@ -172,24 +165,28 @@ class TraceStore:
             )
 
     # ---------- llm ----------
-    def record_llm(self, model: str, purpose: str, usage: dict, latency_ms: int,
+    def record_llm(self, provider: str, model: str, purpose: str, usage: dict,
+                   latency_ms: int,
                    cost_usd: float, prompt_preview: str = "", output_preview: str = "",
                    error: str | None = None) -> None:
         with session_scope() as s:
             s.execute(
                 text(
                     """
-                    INSERT INTO llm_call (run_id, span_id, model, purpose, input_tokens,
+                    INSERT INTO llm_call (run_id, span_id, provider, model, purpose,
+                                          input_tokens,
                                           output_tokens, cache_read_tokens,
                                           reasoning_tokens, cost_usd,
                                           latency_ms, prompt_preview, output_preview, error)
-                    VALUES (:run_id, :span_id, :model, :purpose, :inp, :out, :cache,
+                    VALUES (:run_id, :span_id, :provider, :model, :purpose,
+                            :inp, :out, :cache,
                             :reason, :cost, :latency, :pprev, :oprev, :error)
                     """
                 ),
                 {
                     "run_id": self.run_id,
                     "span_id": _CURRENT_SPAN.get(),
+                    "provider": provider,
                     "model": model,
                     "purpose": purpose,
                     "inp": usage.get("input_tokens", 0),

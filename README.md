@@ -34,7 +34,7 @@ Phân vai: **Airflow lo điều phối** (lịch, retry, fan-out theo nguồn, c
 ```bash
 python -m venv .venv && .venv/Scripts/activate
 pip install -e ".[dev]"
-cp .env.example .env    # điền GOOGLE_CHAT_WEBHOOK_URL + OPENAI_API_KEY
+cp .env.example .env    # điền GOOGLE_CHAT_WEBHOOK_URL + GEMINI_API_KEY
 ```
 
 Dựng Postgres + Airflow:
@@ -81,12 +81,34 @@ news-bot config               # xem cấu hình hiện tại (đã che secret)
   category: kinh-doanh
   url: https://vnexpress.net/rss/kinh-doanh.rss
   weight: 1.3          # nhân vào điểm xếp hạng
-  strategy: rss        # rss | sitemap
+  strategy: rss        # rss | hf_papers | github_trending
   max_items: 25
   enabled: true
 ```
 
 `weight` và `BOOST_KEYWORDS` trong [rank.py](src/news_bot/graph/nodes/rank.py) là hai chỗ chỉnh khẩu vị bản tin cho team.
+
+---
+
+## Chọn LLM
+
+`LLM_PROVIDERS` là một chuỗi ưu tiên, mặc định `gemini,vertex,openai`. Provider đầu
+chuỗi hỏng kiểu hệ thống (sai key, hết quota, không kết nối được) thì lần gọi đó
+tự rơi xuống cái tiếp theo, và provider hỏng bị **bỏ hẳn cho phần còn lại của tiến
+trình** — nếu không, một sự cố của Gemini sẽ làm cả 36 bài đều thử Gemini trước.
+
+| Provider | Xác thực | Tiền đi đâu |
+|---|---|---|
+| `gemini` | `GEMINI_API_KEY` | tài khoản gắn với key. Key không hết hạn |
+| `vertex` | ADC (`gcloud auth application-default login`) | project GCP. **ADC của tài khoản người dùng sẽ hết hạn** |
+| `openai` | `OPENAI_API_KEY` | tài khoản OpenAI |
+
+Mỗi provider có bảng model riêng trong `llm.PROVIDER_MODELS` — đổi provider là đổi
+model, vì `gemini-3.1-flash-lite` không tồn tại trên OpenAI. `SUMMARIZER_MODEL` /
+`EDITOR_MODEL` chỉ ghi đè cho provider **đầu** chuỗi.
+
+Bước tóm tắt luôn chạy với `thinking_budget=0`: rút gọn một bài báo không cần suy
+luận, bật lên chỉ tăng token và độ trễ.
 
 ---
 

@@ -14,6 +14,7 @@ from .db import init_schema
 from .db import repository as repo
 from .delivery import build_message, send_message
 from .graph import run_digest_graph
+from .llm import provider_chain, reset_down
 from .logging_setup import configure_logging, get_logger
 from .sources import collect_source
 from .tracing.store import TraceStore
@@ -39,14 +40,12 @@ def preflight() -> dict:
     problems = []
     if not s.dry_run and not s.google_chat_webhook_url:
         problems.append("thieu GOOGLE_CHAT_WEBHOOK_URL")
-    # Moi provider can mot thu khac nhau - kiem tra dung thu no can.
-    if not s.dry_run:
-        if s.llm_provider == "openai" and not s.openai_api_key:
-            problems.append("thieu OPENAI_API_KEY")
-        elif s.llm_provider == "gemini" and not s.gemini_api_key:
-            problems.append("thieu GEMINI_API_KEY")
-        elif s.llm_provider == "vertex" and not s.vertex_project:
-            problems.append("thieu VERTEX_PROJECT")
+    # Chuoi provider rong = khong provider nao du cau hinh de goi LLM.
+    if not s.dry_run and not provider_chain():
+        problems.append(
+            f"khong provider nao san sang trong LLM_PROVIDERS={s.llm_providers!r} "
+            "(can GEMINI_API_KEY / VERTEX_PROJECT / OPENAI_API_KEY tuong ung)"
+        )
     log.info("preflight.done", sources=len(sources), problems=problems)
     return {"sources": [x.id for x in sources], "problems": problems}
 
@@ -55,6 +54,8 @@ def start_run(logical_date: date, trigger: str = "manual",
               dag_run_id: str | None = None) -> str:
     bootstrap()
     s = get_settings()
+    # Moi run bat dau voi bang sach: provider hong hom qua co the da on.
+    reset_down()
     store = TraceStore(str(uuid.uuid4()))
     store.start_run(
         logical_date=logical_date,
@@ -68,8 +69,9 @@ def start_run(logical_date: date, trigger: str = "manual",
             },
             "digest_total_cap": s.digest_total_cap,
             "weather_place": s.weather_place if s.weather_enabled else None,
-            "summarizer_model": s.summarizer_model,
-            "editor_model": s.editor_model,
+            "providers": provider_chain(),
+            "summarizer_model": s.summarizer_model or "(mac dinh cua provider)",
+            "editor_model": s.editor_model or "(mac dinh cua provider)",
             "dry_run": s.dry_run,
         },
     )

@@ -1,8 +1,13 @@
-"""Lop LLM: factory model theo provider + bang gia de quy doi cost_usd.
+"""Lop LLM: chuoi provider du phong + bang gia de quy doi cost_usd.
 
-Provider cam duoc qua LLM_PROVIDER (openai | vertex). Ly do khong thay thang:
-giu duoc duong lui khi mot ben het credit hoac loi, va do duoc A/B bang chinh
-bang llm_call thay vi tranh luan.
+Thu tu provider lay tu LLM_PROVIDERS (mac dinh: gemini, vertex, openai). Moi
+provider co bang model rieng - `gemini-3.1-flash-lite` khong ton tai tren OpenAI
+va nguoc lai - nen chuyen provider cung la chuyen model.
+
+Provider hong kieu he thong (sai key, het quota, khong ket noi duoc) bi danh dau
+"down" va bo qua o cac lan goi sau TRONG CUNG TIEN TRINH. Neu khong, mot su co
+cua Gemini se lam ca 36 bai deu thu Gemini truoc roi moi sang Vertex - gap doi
+do tre ma khong duoc gi.
 """
 from __future__ import annotations
 
@@ -10,13 +15,15 @@ from functools import lru_cache
 from typing import Any
 
 from .config import get_settings
+from .logging_setup import get_logger
 
-# USD / 1 trieu token. Model id la duy nhat giua hai provider nen dung mot bang phang.
-#
-# OpenAI: platform.openai.com/docs/pricing, bac short context, tier Standard.
-# Vertex: cloud.google.com/vertex-ai/generative-ai/pricing, vung `global`,
-#         bac <= 200K token vao.
-# Ca hai doc ngay 20/09/2026.
+log = get_logger(__name__)
+
+# USD / 1 trieu token.
+#   OpenAI: platform.openai.com/docs/pricing (short context, tier Standard)
+#   Gemini: ai.google.dev/gemini-api/docs/pricing (paid tier)
+#   Vertex: cloud.google.com/vertex-ai/generative-ai/pricing (vung global, <=200K)
+# Ca ba doc ngay 20/09/2026.
 PRICING: dict[str, dict[str, float]] = {
     # ---- OpenAI ----
     "gpt-6-astra":   {"input": 10.00, "cached_input": 1.00, "output": 50.00},
@@ -24,27 +31,39 @@ PRICING: dict[str, dict[str, float]] = {
     "gpt-5.6-terra": {"input": 2.00,  "cached_input": 0.20, "output": 12.00},
     "gpt-5.6-luna":  {"input": 0.20,  "cached_input": 0.02, "output": 1.20},
     # The he cu (08/2025). Gia moi token thap nhat NHUNG la model suy luan tieu
-    # 3.000-6.000 token dau ra cho mot bai tom tat (luna chi ~220), nen thuc te
-    # dat hon luna ~4 lan va cham hon ~8 lan. Do ngay 20/09/2026, xem docs/REPORT.md.
+    # 3.000-6.000 token dau ra cho mot ban tom tat 220 token, nen thuc te dat
+    # hon luna ~4 lan va cham hon ~8 lan. Xem docs/REPORT.md muc 4b.
     "gpt-5-nano":    {"input": 0.05,  "cached_input": 0.005, "output": 0.40},
     "gpt-5-mini":    {"input": 0.25,  "cached_input": 0.025, "output": 2.00},
-    "gpt-5.4-nano":  {"input": 0.20,  "cached_input": 0.02,  "output": 1.25},
-    "gpt-5.4-mini":  {"input": 0.75,  "cached_input": 0.075, "output": 4.50},
 
-    # ---- Vertex AI (Gemini) ----
-    # Gia khuyen mai cua ho 3.x Flash het han 31/12/2026, sau do gap doi
-    # ($1.50 / $7.50). Nho sua bang nay truoc moc do.
+    # ---- Gemini (Developer API va Vertex cung gia o cac model nay) ----
+    # Gia khuyen mai cua ho 3.x Flash het han 31/12/2026, sau do gap doi.
     "gemini-3.8-flash":      {"input": 0.75, "cached_input": 0.075, "output": 3.75},
     "gemini-3.7-flash":      {"input": 0.75, "cached_input": 0.075, "output": 3.75},
     "gemini-3.6-flash":      {"input": 0.75, "cached_input": 0.075, "output": 3.75},
     "gemini-3.5-flash":      {"input": 1.50, "cached_input": 0.15,  "output": 9.00},
     "gemini-3.5-flash-lite": {"input": 0.30, "cached_input": 0.03,  "output": 2.50},
-    "gemini-2.5-flash-lite": {"input": 0.10, "cached_input": 0.01,  "output": 0.40},
-    "gemini-3.1-pro-preview": {"input": 2.00, "cached_input": 0.20, "output": 12.00},
-    # Chi co tren Gemini Developer API. Re nhat trong cac ban lite con mo cho
-    # nguoi dung moi ($0.25/$1.50 so voi $0.30/$2.50 cua 3.5-flash-lite).
     "gemini-3.1-flash-lite": {"input": 0.25, "cached_input": 0.025, "output": 1.50},
+    # Chi con tren Vertex: Developer API khong mo cho nguoi dung moi nua.
+    "gemini-2.5-flash-lite": {"input": 0.10, "cached_input": 0.01,  "output": 0.40},
 }
+
+# Model cua tung provider cho tung viec. Doi provider la doi model.
+PROVIDER_MODELS: dict[str, dict[str, str]] = {
+    "gemini": {"summarize": "gemini-3.1-flash-lite", "compose": "gemini-3.8-flash"},
+    "vertex": {"summarize": "gemini-2.5-flash-lite", "compose": "gemini-3.5-flash-lite"},
+    "openai": {"summarize": "gpt-5.6-luna", "compose": "gpt-5.6-luna"},
+}
+
+# Provider da hong kieu he thong trong tien trinh nay -> bo qua o cac lan sau.
+_DOWN: set[str] = set()
+
+# Dau hieu provider hong ca cum, khong phai hong mot bai.
+_SYSTEMIC = (
+    "authentication", "unauthenticated", "permission", "api key", "api_key",
+    "quota", "resource_exhausted", "429", "401", "403",
+    "connection", "timeout", "unavailable", "503",
+)
 
 
 def estimate_cost_usd(
@@ -76,13 +95,9 @@ def estimate_cost_usd(
 def extract_usage(response: Any) -> dict[str, int]:
     """Doc usage tu AIMessage.
 
-    `usage_metadata` la dang chuan hoa cua LangChain nen cac truong co ten giong
-    nhau du chay provider nao.
-
     Canh bao: `reasoning_tokens` (Gemini: thoughtsTokenCount) KHONG nam trong
     `output_tokens`. Do thuc te tren gemini-3.8-flash: output 276, reasoning 588.
-    Google van tinh tien chung theo gia output, nen estimate_cost_usd() phai
-    cong ca hai - xem ham do.
+    Google van tinh tien chung theo gia output - xem estimate_cost_usd().
     """
     meta = getattr(response, "usage_metadata", None) or {}
     in_details = meta.get("input_token_details", {}) or {}
@@ -95,17 +110,72 @@ def extract_usage(response: Any) -> dict[str, int]:
     }
 
 
+def provider_chain() -> list[str]:
+    """Thu tu provider, da bo nhung cai thieu cau hinh hoac dang down."""
+    s = get_settings()
+    needs = {"gemini": s.gemini_api_key, "openai": s.openai_api_key,
+             "vertex": s.vertex_project}
+    chain: list[str] = []
+    for name in (p.strip() for p in s.llm_providers.split(",")):
+        if not name or name in chain or name in _DOWN:
+            continue
+        if name not in BUILDERS:
+            log.warning("llm.unknown_provider", provider=name)
+            continue
+        if not needs.get(name):
+            continue
+        chain.append(name)
+    return chain
+
+
+def model_for(provider: str, purpose: str) -> str:
+    """Model cua provider nay cho viec nay.
+
+    SUMMARIZER_MODEL / EDITOR_MODEL trong .env chi ap dung cho provider DAU
+    chuoi - provider du phong phai dung model cua chinh no, vi mot ten model
+    cua Gemini khong co nghia gi voi OpenAI.
+    """
+    s = get_settings()
+    chain = provider_chain()
+    if chain and provider == chain[0]:
+        override = s.summarizer_model if purpose == "summarize" else s.editor_model
+        if override:
+            return override
+    table = PROVIDER_MODELS.get(provider, {})
+    return table.get(purpose) or table.get("summarize", "")
+
+
+def mark_down(provider: str, error: str) -> bool:
+    """Danh dau provider hong kieu he thong. Tra ve True neu vua danh dau."""
+    lowered = error.lower()
+    if not any(token in lowered for token in _SYSTEMIC):
+        return False
+    if provider in _DOWN:
+        return False
+    _DOWN.add(provider)
+    log.warning("llm.provider_down", provider=provider, error=error[:200])
+    return True
+
+
+def down_providers() -> set[str]:
+    return set(_DOWN)
+
+
+def reset_down() -> None:
+    """Xoa danh sach down. Goi o dau moi run va trong test."""
+    _DOWN.clear()
+
+
 def _wants_thinking_budget(model: str) -> bool:
     """Chi gui thinking_budget cho model thuc su biet suy luan.
 
     Ban -lite khong suy luan (reasoning_tokens luon 0), va it nhat
-    gemini-3.5-flash-lite tren Developer API tra 400 INVALID_ARGUMENT khi nhan
-    tham so nay. Gui vao la vo ich va co the lam hong request.
+    gemini-3.5-flash-lite tra 400 INVALID_ARGUMENT khi nhan tham so nay.
     """
     return "lite" not in model.lower()
 
 
-def _build_openai(model: str, max_tokens: int):
+def _build_openai(model: str, max_tokens: int, thinking_budget: int):
     from langchain_openai import ChatOpenAI
 
     s = get_settings()
@@ -114,51 +184,48 @@ def _build_openai(model: str, max_tokens: int):
         api_key=s.openai_api_key or None,
         max_tokens=max_tokens,
         timeout=180,
-        max_retries=3,
+        max_retries=2,
     )
 
 
-def _build_vertex(model: str, max_tokens: int):
+def _google_kwargs(model: str, max_tokens: int, thinking_budget: int) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {
+        "model": model,
+        "max_output_tokens": max_tokens,
+        "max_retries": 2,
+    }
+    if thinking_budget >= 0 and _wants_thinking_budget(model):
+        kwargs["thinking_budget"] = thinking_budget
+    return kwargs
+
+
+def _build_vertex(model: str, max_tokens: int, thinking_budget: int):
     # ChatVertexAI cua langchain-google-vertexai da deprecated tu LangChain 3.2;
-    # ChatGoogleGenerativeAI voi vertexai=True la duong thay the, van di qua
-    # Vertex AI va van dung ADC.
+    # ChatGoogleGenerativeAI voi vertexai=True la duong thay the, van dung ADC.
     from langchain_google_genai import ChatGoogleGenerativeAI
 
     s = get_settings()
-    kwargs: dict[str, Any] = {
-        "model": model,
-        "vertexai": True,
-        "project": s.vertex_project or None,
-        "location": s.vertex_location,
-        "max_output_tokens": max_tokens,
-        "max_retries": 3,
-    }
-    # Ho Flash suy luan mac dinh va tieu vai tram token cho mot ban tom tat 200
-    # token. thinking_budget=0 tat han; -1 de model tu quyet.
-    if s.vertex_thinking_budget >= 0 and _wants_thinking_budget(model):
-        kwargs["thinking_budget"] = s.vertex_thinking_budget
-    return ChatGoogleGenerativeAI(**kwargs)
+    return ChatGoogleGenerativeAI(
+        vertexai=True,
+        project=s.vertex_project or None,
+        location=s.vertex_location,
+        **_google_kwargs(model, max_tokens, thinking_budget),
+    )
 
 
-def _build_gemini(model: str, max_tokens: int):
+def _build_gemini(model: str, max_tokens: int, thinking_budget: int):
     """Gemini Developer API: xac thuc bang API key, KHONG qua Vertex/ADC.
 
     Khac biet dang ke voi `vertex`: tien di vao tai khoan gan voi API key chu
-    khong vao project GCP. Doi lai, mot so model cu (vi du gemini-2.5-flash-lite)
-    khong con mo cho nguoi dung moi tren duong nay.
+    khong vao project GCP, va key khong het han nhu ADC cua tai khoan nguoi dung.
     """
     from langchain_google_genai import ChatGoogleGenerativeAI
 
     s = get_settings()
-    kwargs: dict[str, Any] = {
-        "model": model,
-        "google_api_key": s.gemini_api_key or None,
-        "max_output_tokens": max_tokens,
-        "max_retries": 3,
-    }
-    if s.vertex_thinking_budget >= 0 and _wants_thinking_budget(model):
-        kwargs["thinking_budget"] = s.vertex_thinking_budget
-    return ChatGoogleGenerativeAI(**kwargs)
+    return ChatGoogleGenerativeAI(
+        google_api_key=s.gemini_api_key or None,
+        **_google_kwargs(model, max_tokens, thinking_budget),
+    )
 
 
 BUILDERS = {
@@ -168,13 +235,10 @@ BUILDERS = {
 }
 
 
-@lru_cache(maxsize=12)
-def get_chat_model(model: str | None = None, max_tokens: int = 4096):
+@lru_cache(maxsize=24)
+def get_chat_model(provider: str, model: str, max_tokens: int, thinking_budget: int):
     """Model chat dung chung. lru_cache de tai su dung HTTP connection pool."""
-    s = get_settings()
-    build = BUILDERS.get(s.llm_provider)
+    build = BUILDERS.get(provider)
     if build is None:
-        raise ValueError(
-            f"LLM_PROVIDER khong ho tro: {s.llm_provider!r} (chon: {sorted(BUILDERS)})"
-        )
-    return build(model or s.summarizer_model, max_tokens)
+        raise ValueError(f"provider khong ho tro: {provider!r} (chon: {sorted(BUILDERS)})")
+    return build(model, max_tokens, thinking_budget)

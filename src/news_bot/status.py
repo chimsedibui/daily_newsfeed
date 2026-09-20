@@ -19,6 +19,7 @@ from sqlalchemy import text
 
 from .config import REPO_ROOT, get_settings
 from .db.engine import session_scope
+from .llm import down_providers, provider_chain
 from .logging_setup import configure_logging, get_logger
 from .utils import today_in
 
@@ -73,12 +74,13 @@ SOURCES = """
 """
 
 COSTS = """
-    SELECT model, purpose, count(*) AS calls,
+    SELECT provider, model, purpose, count(*) AS calls,
            sum(input_tokens) AS tok_in, sum(output_tokens) AS tok_out,
-           sum(reasoning_tokens) AS tok_nghi, round(sum(cost_usd), 5) AS usd
+           sum(reasoning_tokens) AS tok_nghi, round(sum(cost_usd), 5) AS usd,
+           count(*) FILTER (WHERE error IS NOT NULL) AS loi
     FROM news.llm_call
     WHERE created_at > now() - interval '7 days'
-    GROUP BY 1, 2 ORDER BY 7 DESC NULLS LAST
+    GROUP BY 1, 2, 3 ORDER BY 8 DESC NULLS LAST
 """
 
 SIZES = """
@@ -165,6 +167,8 @@ def render() -> str:
     costs = _rows(COSTS)
     sizes = _rows(SIZES)
 
+    down = down_providers()
+    down_note = f" · đang lỗi: {', '.join(sorted(down))}" if down else ""
     last = runs[0] if runs else {}
     bad_sources = [r for r in sources if not r["ok"]]
     stale = [r for r in sources if (r["newest_item_age_h"] or 0) > 168]
@@ -178,9 +182,8 @@ def render() -> str:
         f"<style>{CSS}</style></head><body><div class='wrap'>",
         "<h1>Bản tin hằng ngày — trạng thái</h1>",
         f"<p class='sub'>{_esc(today_in(s.news_timezone).strftime('%d/%m/%Y'))} · "
-        f"provider <b>{_esc(s.llm_provider)}</b> · "
-        f"tóm tắt <b>{_esc(s.summarizer_model)}</b> · "
-        f"biên tập <b>{_esc(s.editor_model)}</b> · tự làm mới mỗi 60 giây</p>",
+        f"provider <b>{_esc(' → '.join(provider_chain()) or 'chưa cấu hình')}</b>"
+        f"{down_note} · tự làm mới mỗi 60 giây</p>",
     ]
 
     # ---- the tong quan ----
@@ -254,14 +257,17 @@ def render() -> str:
 
     # ---- chi phi + dung luong ----
     parts.append("<h2>Chi phí LLM (7 ngày)</h2><div class='scroll'><table><tr>"
-                 "<th>Model</th><th>Việc</th><th>Lượt</th><th>Token vào</th>"
-                 "<th>Token ra</th><th>Token nghĩ</th><th>USD</th></tr>")
+                 "<th>Provider</th><th>Model</th><th>Việc</th><th>Lượt</th>"
+                 "<th>Lỗi</th><th>Token vào</th><th>Token ra</th>"
+                 "<th>Token nghĩ</th><th>USD</th></tr>")
     for c in costs:
+        err_cls = "bad" if c["loi"] else ""
         parts.append(
-            f"<tr><td>{_esc(c['model'])}</td><td>{_esc(c['purpose'])}</td>"
-            f"<td>{_esc(c['calls'])}</td><td>{_esc(c['tok_in'])}</td>"
-            f"<td>{_esc(c['tok_out'])}</td><td>{_esc(c['tok_nghi'])}</td>"
-            f"<td>{_esc(c['usd'])}</td></tr>"
+            f"<tr><td>{_esc(c['provider'])}</td><td>{_esc(c['model'])}</td>"
+            f"<td>{_esc(c['purpose'])}</td><td>{_esc(c['calls'])}</td>"
+            f"<td class='{err_cls}'>{_esc(c['loi'])}</td>"
+            f"<td>{_esc(c['tok_in'])}</td><td>{_esc(c['tok_out'])}</td>"
+            f"<td>{_esc(c['tok_nghi'])}</td><td>{_esc(c['usd'])}</td></tr>"
         )
     parts.append("</table></div>")
 

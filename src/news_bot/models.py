@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 
 class RawItem(BaseModel):
-    """Một entry thô từ RSS/sitemap/API, chưa fetch fulltext."""
+    """Một entry thô từ RSS hoặc API JSON, chưa fetch fulltext."""
     source_id: str
     publisher: str
     category: str | None = None
@@ -60,7 +60,6 @@ class Summary(BaseModel):
     bullets: list[str] = Field(default_factory=list)
     topics: list[str] = Field(default_factory=list)
     importance: int = 3          # 1..5
-    model: str = ""
 
 
 class DigestItem(BaseModel):

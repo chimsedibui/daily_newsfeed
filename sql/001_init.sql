@@ -81,6 +81,9 @@ CREATE TABLE IF NOT EXISTS llm_call (
 );
 CREATE INDEX IF NOT EXISTS idx_llm_run ON llm_call (run_id, created_at);
 ALTER TABLE llm_call ADD COLUMN IF NOT EXISTS reasoning_tokens INTEGER DEFAULT 0;
+-- Bo cot `model` cua article_summary: moi provider mot ten model, va thong tin
+-- do da nam trong llm_call.
+ALTER TABLE article_summary ALTER COLUMN model DROP NOT NULL;
 
 -- Log có cấu trúc, ghi cùng transaction với pipeline (structlog -> đây).
 CREATE TABLE IF NOT EXISTS app_log (
@@ -118,7 +121,6 @@ CREATE TABLE IF NOT EXISTS article_summary (
     id          BIGSERIAL PRIMARY KEY,
     article_id  BIGINT NOT NULL REFERENCES article(id) ON DELETE CASCADE,
     run_id      UUID   NOT NULL REFERENCES pipeline_run(run_id) ON DELETE CASCADE,
-    model       TEXT   NOT NULL,
     summary     TEXT   NOT NULL,
     bullets     JSONB  NOT NULL DEFAULT '[]'::jsonb,
     topics      JSONB  NOT NULL DEFAULT '[]'::jsonb,

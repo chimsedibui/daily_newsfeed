@@ -38,8 +38,8 @@ def _has_summaries(state: GraphState) -> str:
     return "stop" if not state.get("summaries") else "continue"
 
 
-def build_graph(checkpointer=None):
-    """Tra ve graph da compile. checkpointer=None -> khong luu state trung gian."""
+def build_graph():
+    """Tra ve graph da compile."""
     g = StateGraph(GraphState)
     g.add_node("load", load_articles)
     g.add_node("cluster", cluster_articles)
@@ -59,37 +59,16 @@ def build_graph(checkpointer=None):
     )
     g.add_edge("compose", "render")
     g.add_edge("render", END)
-    return g.compile(checkpointer=checkpointer)
+    return g.compile()
 
 
-def get_checkpointer():
-    """Postgres checkpointer neu co cai `langgraph-checkpoint-postgres`, khong thi None.
-
-    Checkpointer cho phep resume graph giua chung - huu ich khi task Airflow bi
-    kill sau buoc summarize (buoc dat tien nhat).
-    """
-    try:
-        from langgraph.checkpoint.postgres import PostgresSaver
-    except ImportError:
-        log.info("checkpointer.disabled", reason="langgraph-checkpoint-postgres chua cai")
-        return None
-    s = get_settings()
-    dsn = s.postgres_dsn.replace("postgresql+psycopg://", "postgresql://")
-    saver = PostgresSaver.from_conn_string(dsn).__enter__()
-    saver.setup()
-    return saver
 
 
-def run_digest_graph(
-    run_id: str,
-    logical_date: date | None = None,
-    use_checkpointer: bool = False,
-) -> dict:
+def run_digest_graph(run_id: str, logical_date: date | None = None) -> dict:
     """Chay graph cho mot run da ton tai (pipeline_run duoc tao truoc do)."""
     store = TraceStore(run_id)
     store.attach()
-    checkpointer = get_checkpointer() if use_checkpointer else None
-    graph = build_graph(checkpointer)
+    graph = build_graph()
 
     initial: GraphState = {
         "run_id": run_id,

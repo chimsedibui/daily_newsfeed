@@ -26,10 +26,12 @@ class Settings(BaseSettings):
     # LLM
     # openai | vertex. Vertex dung ADC (gcloud auth application-default login
     # hoac GOOGLE_APPLICATION_CREDENTIALS tro toi key cua service account).
-    # openai | vertex | gemini
-    #   vertex = Vertex AI qua ADC, tinh tien vao project GCP.
-    #   gemini = Gemini Developer API qua API key, tinh tien vao chinh key do.
-    llm_provider: str = "openai"
+    # Thu tu uu tien, cach nhau dau phay. Provider dau chuoi hong kieu he
+    # thong thi tu dong roi xuong cai tiep theo trong cung tien trinh.
+    #   gemini = Developer API qua API key. Key khong het han.
+    #   vertex = Vertex AI qua ADC. ADC cua tai khoan nguoi dung SE het han.
+    #   openai = du phong cuoi.
+    llm_providers: str = "gemini,vertex,openai"
     openai_api_key: str = ""
     gemini_api_key: str = ""
     vertex_project: str = ""
@@ -37,10 +39,10 @@ class Settings(BaseSettings):
     # -1 = de model tu quyet; 0 = tat han suy luan. Ho Gemini Flash suy luan mac
     # dinh va tieu vai tram token cho mot ban tom tat 200 token.
     vertex_thinking_budget: int = -1
-    # Ca hai buoc dung bac gia re nhat cua OpenAI ($0.20/$1.20 per MTok).
-    # Day la rang buoc ngan sach cua du an, khong phai mac dinh ky thuat.
-    summarizer_model: str = "gpt-5.6-luna"
-    editor_model: str = "gpt-5.6-luna"
+    # Chi ghi de model cho provider DAU chuoi. De trong = dung mac dinh cua
+    # tung provider trong llm.PROVIDER_MODELS.
+    summarizer_model: str = ""
+    editor_model: str = ""
     llm_max_concurrency: int = 4
 
     # Storage
@@ -88,7 +90,7 @@ class Source(BaseModel):
     url: str
     category: str | None = None
     group: str = "serious"          # serious | life - xem groups.py
-    strategy: str = "rss"          # rss | sitemap | hf_papers
+    strategy: str = "rss"          # rss | hf_papers | github_trending
     fulltext: bool = True
     enabled: bool = True
     weight: float = 1.0

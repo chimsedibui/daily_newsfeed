@@ -7,7 +7,6 @@
 #
 # strategy:
 #   rss        -> parse feed XML
-#   sitemap    -> đọc news sitemap (khi site không mở RSS)
 #   hf_papers  -> API daily papers của Hugging Face (JSON, đã xếp hạng theo upvote)
 #   github_trending -> GitHub Search API (JSON). {since} trong URL được thay bằng
 #                      ngày đầu của cửa sổ thời gian.

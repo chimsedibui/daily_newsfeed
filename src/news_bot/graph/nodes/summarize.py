@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from ...config import get_settings
 from ...db import repository as repo
+from ...llm import provider_chain
 from ...logging_setup import get_logger
 from ...models import Article, Summary
 from ...tracing.store import span
@@ -53,15 +54,17 @@ def _prompt_for(article: Article) -> str:
     return "\n".join(lines)
 
 
-def _summarize_one(article: Article, model: str, store) -> Summary | None:
+def _summarize_one(article: Article, store) -> Summary | None:
     parsed = structured_call(
         ArticleSummary,
         system=SYSTEM,
         user=_prompt_for(article),
-        model=model,
         purpose="summarize",
         store=store,
         max_tokens=1500,
+        # Tom tat mot bai bao khong can suy luan: chi la rut gon co cau truc.
+        # Bat len chi lam tang token va do tre, khong doi lai chat luong.
+        thinking_budget=0,
     )
     if parsed is None:
         return None
@@ -73,7 +76,6 @@ def _summarize_one(article: Article, model: str, store) -> Summary | None:
         bullets=parsed.bullets[:3],
         topics=parsed.topics[:3],
         importance=parsed.importance,
-        model=model,
     )
 
 
@@ -82,13 +84,13 @@ def summarize_articles(state: GraphState, config: RunnableConfig) -> GraphState:
     s = get_settings()
     shortlist = state.get("shortlist") or []
 
-    with span(store, "summarize_articles", attributes={"n": len(shortlist),
-                                                       "model": s.summarizer_model}) as sp:
+    with span(store, "summarize_articles",
+              attributes={"n": len(shortlist), "providers": provider_chain()}) as sp:
         if s.dry_run:
             summaries = [
                 Summary(
                     article_id=a.id, url_canonical=a.url_canonical, headline=a.title,
-                    summary=truncate(a.lead or a.title, 240), model="dry-run",
+                    summary=truncate(a.lead or a.title, 240),
                     importance=3, topics=[a.category or "tin"],
                 )
                 for a in shortlist
@@ -97,7 +99,7 @@ def summarize_articles(state: GraphState, config: RunnableConfig) -> GraphState:
             summaries = []
             with ThreadPoolExecutor(max_workers=s.llm_max_concurrency) as pool:
                 futures = [
-                    pool.submit(_summarize_one, a, s.summarizer_model, store)
+                    pool.submit(_summarize_one, a, store)
                     for a in shortlist
                 ]
                 for fut in as_completed(futures):

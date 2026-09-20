@@ -1,4 +1,4 @@
-"""Parse RSS, news-sitemap va API daily papers cua Hugging Face thanh RawItem."""
+"""Parse RSS va cac API JSON (Hugging Face papers, GitHub) thanh RawItem."""
 from __future__ import annotations
 
 import json
@@ -72,42 +72,6 @@ def parse_rss(content: bytes, source: Source) -> list[RawItem]:
         )
     return items
 
-
-def parse_sitemap(content: bytes, source: Source) -> list[RawItem]:
-    """Google News sitemap: <url><loc> + <news:news><news:title>/<news:publication_date>."""
-    soup = BeautifulSoup(content, "xml")
-    limit = source.max_items or 1000
-    items: list[RawItem] = []
-    for url_tag in soup.find_all("url")[:limit]:
-        loc = url_tag.find("loc")
-        if not loc:
-            continue
-        news = url_tag.find("news")
-        title_tag = url_tag.find("title") if news else None
-        date_tag = url_tag.find("publication_date") if news else None
-        title = (title_tag.get_text(strip=True) if title_tag else None) or loc.get_text(
-            strip=True
-        )
-        published = None
-        if date_tag:
-            try:
-                published = dateparser.parse(date_tag.get_text(strip=True))
-            except (ValueError, OverflowError):
-                published = None
-        items.append(
-            RawItem(
-                source_id=source.id,
-                publisher=source.publisher,
-                category=source.category,
-                group=source.group,
-                weight=source.weight,
-                title=title,
-                url=loc.get_text(strip=True),
-                published_at=published,
-                raw={"strategy": "sitemap"},
-            )
-        )
-    return items
 
 
 def parse_hf_papers(content: bytes, source: Source) -> list[RawItem]:
@@ -220,7 +184,6 @@ def parse_github_repos(content: bytes, source: Source) -> list[RawItem]:
 
 PARSERS = {
     "rss": parse_rss,
-    "sitemap": parse_sitemap,
     "hf_papers": parse_hf_papers,
     "github_trending": parse_github_repos,
 }
