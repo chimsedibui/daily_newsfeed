@@ -13,6 +13,9 @@ USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
+# /opt thuoc root: tao san hai thu muc nay cho user airflow, neu khong
+# `python -m venv` va `pip install -e` deu chet vi Permission denied.
+RUN install -d -o airflow -g root -m 775 /opt/app-venv /opt/news
 USER airflow
 
 # Driver Postgres cho chinh Airflow (metadata DB).

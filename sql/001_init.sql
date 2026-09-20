@@ -81,9 +81,6 @@ CREATE TABLE IF NOT EXISTS llm_call (
 );
 CREATE INDEX IF NOT EXISTS idx_llm_run ON llm_call (run_id, created_at);
 ALTER TABLE llm_call ADD COLUMN IF NOT EXISTS reasoning_tokens INTEGER DEFAULT 0;
--- Bo cot `model` cua article_summary: moi provider mot ten model, va thong tin
--- do da nam trong llm_call.
-ALTER TABLE article_summary ALTER COLUMN model DROP NOT NULL;
 
 -- Log có cấu trúc, ghi cùng transaction với pipeline (structlog -> đây).
 CREATE TABLE IF NOT EXISTS app_log (
@@ -128,6 +125,18 @@ CREATE TABLE IF NOT EXISTS article_summary (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (article_id, run_id)
 );
+
+-- Migration: DB cu co cot `model` NOT NULL tren article_summary. Bang moi
+-- khong con cot do (moi provider mot ten model, va thong tin da nam trong
+-- llm_call), nen chi noi rang buoc khi cot con ton tai.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = current_schema()
+                 AND table_name = 'article_summary' AND column_name = 'model') THEN
+        ALTER TABLE article_summary ALTER COLUMN model DROP NOT NULL;
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS digest (
     id            BIGSERIAL PRIMARY KEY,

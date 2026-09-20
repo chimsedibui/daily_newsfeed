@@ -51,7 +51,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 APP_PYTHON = os.environ.get("NEWS_APP_PYTHON", str(REPO_ROOT / ".venv" / "bin" / "python"))
 
 LOCAL_TZ = pendulum.timezone("Asia/Ho_Chi_Minh")
-DS_LOCAL = '{{ logical_date.in_timezone("Asia/Ho_Chi_Minh") | ds }}'
+# Ngay cua ban tin = NGAY CHAY, khong phai `logical_date`. Voi lich cron,
+# logical_date la DAU data interval, tuc ngay lam viec TRUOC do: run luc
+# 08:00 thu Hai se co logical_date la thu Sau. `data_interval_end` chinh la
+# thoi diem kich hoat, nen ban tin mang dung ngay no duoc gui.
+DS_LOCAL = '{{ data_interval_end.in_timezone("Asia/Ho_Chi_Minh") | ds }}'
 
 default_args = {
     "owner": "data-platform",

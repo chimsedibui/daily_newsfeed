@@ -1,13 +1,13 @@
 # Stack dev bang Docker.
 #
 # May khong cai duoc Docker: xem docs/SETUP-WSL.md - Postgres rootless
-# (scripts/pg.sh) + Airflow trong venv rieng (scripts/airflow.sh). Do la cach
-# stack nay dang duoc kiem chung.
+# (scripts/pg.sh) + Airflow trong venv rieng (scripts/airflow.sh).
 #
-# Production nen tach DB metadata cua Airflow ra khoi DB nghiep vu.
+# Production nen tach DB metadata cua Airflow ra khoi instance nay.
 services:
   postgres:
     image: postgres:17-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: news
       POSTGRES_PASSWORD: news
@@ -16,8 +16,10 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # 001_init.sql chi chay khi volume con trong. Lan sau dung `news-bot init-db`.
-      - ./sql:/docker-entrypoint-initdb.d:ro
+      # Chi chay khi volume con trong. Lan sau dung `news-bot init-db`.
+      # 000 tao DB metadata cho Airflow, 001 tao schema nghiep vu.
+      - ./docker/000_airflow_db.sql:/docker-entrypoint-initdb.d/000_airflow_db.sql:ro
+      - ./sql/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U news"]
       interval: 5s
@@ -26,12 +28,18 @@ services:
 
   airflow:
     # Image tu dung: Airflow + mot venv rieng cho app (xem Dockerfile.airflow).
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile.airflow
     depends_on:
       postgres:
         condition: service_healthy
+    # Cau hinh app (key LLM, webhook, khau vi ban tin) lay nguyen tu .env.
+    # Nhung gi khac giua host va container duoc ghi de o `environment` ben duoi
+    # - environment luon thang env_file.
+    env_file:
+      - .env
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://news:news@postgres:5432/airflow
@@ -39,13 +47,9 @@ services:
       AIRFLOW__CORE__DEFAULT_TIMEZONE: Asia/Ho_Chi_Minh
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
       NEWS_APP_PYTHON: /opt/app-venv/bin/python
-      # Bien moi truong cua app - task external_python ke thua tu day.
+      # .env tro toi Postgres rootless tren host (127.0.0.1:18432) - trong
+      # container phai la service `postgres`.
       POSTGRES_DSN: postgresql+psycopg://news:news@postgres:5432/news
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      GOOGLE_CHAT_WEBHOOK_URL: ${GOOGLE_CHAT_WEBHOOK_URL:-}
-      SUMMARIZER_MODEL: ${SUMMARIZER_MODEL:-gpt-5.6-luna}
-      EDITOR_MODEL: ${EDITOR_MODEL:-gpt-5.6-luna}
-      DRY_RUN: ${DRY_RUN:-false}
       LOG_JSON: "true"
     volumes:
       - ./airflow/dags:/opt/airflow/dags:ro
