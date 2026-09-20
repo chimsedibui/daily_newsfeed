@@ -1,0 +1,45 @@
+[project]
+name = "updating-news"
+version = "0.1.0"
+description = "Daily Vietnamese news digest -> Google Chat, orchestrated by Airflow, reasoned by LangGraph, traced in Postgres."
+requires-python = ">=3.11"
+dependencies = [
+  "httpx[http2]>=0.27",
+  "feedparser>=6.0.11",
+  "lxml>=5.2",
+  "beautifulsoup4>=4.12",
+  "python-dateutil>=2.9",
+  "pyyaml>=6.0",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "sqlalchemy>=2.0.30",
+  "psycopg[binary]>=3.1.19",
+  "structlog>=24.1",
+  "tenacity>=8.3",
+  "typer>=0.12",
+  "langgraph>=0.2.28",
+  "langchain-core>=0.3.0",
+  "langchain-anthropic>=0.2.0",
+]
+
+[project.optional-dependencies]
+checkpoint = ["langgraph-checkpoint-postgres>=2.0.0"]
+dev = ["pytest>=8.2", "pytest-asyncio>=0.23", "respx>=0.21", "ruff>=0.5"]
+
+[project.scripts]
+news-bot = "news_bot.cli:app"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
