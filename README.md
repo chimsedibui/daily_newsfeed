@@ -34,7 +34,7 @@ Phân vai: **Airflow lo điều phối** (lịch, retry, fan-out theo nguồn, c
 ```bash
 python -m venv .venv && .venv/Scripts/activate
 pip install -e ".[dev]"
-cp .env.example .env    # điền GOOGLE_CHAT_WEBHOOK_URL + ANTHROPIC_API_KEY
+cp .env.example .env    # điền GOOGLE_CHAT_WEBHOOK_URL + OPENAI_API_KEY
 ```
 
 Dựng Postgres + Airflow:

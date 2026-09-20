@@ -21,9 +21,11 @@ class Settings(BaseSettings):
     google_chat_thread_per_day: bool = True
 
     # LLM
-    anthropic_api_key: str = ""
-    summarizer_model: str = "claude-opus-5"
-    editor_model: str = "claude-opus-5"
+    openai_api_key: str = ""
+    # Tom tat: 24 lan goi/ngay -> chon bac gia trung binh.
+    summarizer_model: str = "gpt-5.6-terra"
+    # Bien tap: 1 lan goi/ngay, can chat luong nhat.
+    editor_model: str = "gpt-6-astra"
     llm_max_concurrency: int = 4
 
     # Storage

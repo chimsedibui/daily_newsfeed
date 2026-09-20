@@ -41,10 +41,10 @@ services:
       NEWS_APP_PYTHON: /opt/app-venv/bin/python
       # Bien moi truong cua app - task external_python ke thua tu day.
       POSTGRES_DSN: postgresql+psycopg://news:news@postgres:5432/news
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_CHAT_WEBHOOK_URL: ${GOOGLE_CHAT_WEBHOOK_URL:-}
-      SUMMARIZER_MODEL: ${SUMMARIZER_MODEL:-claude-opus-5}
-      EDITOR_MODEL: ${EDITOR_MODEL:-claude-opus-5}
+      SUMMARIZER_MODEL: ${SUMMARIZER_MODEL:-gpt-5.6-terra}
+      EDITOR_MODEL: ${EDITOR_MODEL:-gpt-6-astra}
       DRY_RUN: ${DRY_RUN:-false}
       LOG_JSON: "true"
     volumes:

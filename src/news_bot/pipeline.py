@@ -34,8 +34,8 @@ def preflight() -> dict:
     problems = []
     if not s.dry_run and not s.google_chat_webhook_url:
         problems.append("thieu GOOGLE_CHAT_WEBHOOK_URL")
-    if not s.dry_run and not s.anthropic_api_key:
-        problems.append("thieu ANTHROPIC_API_KEY")
+    if not s.dry_run and not s.openai_api_key:
+        problems.append("thieu OPENAI_API_KEY")
     log.info("preflight.done", sources=len(sources), problems=problems)
     return {"sources": [x.id for x in sources], "problems": problems}
 

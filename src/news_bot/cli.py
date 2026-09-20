@@ -44,12 +44,16 @@ def check_sources(lookback: int = typer.Option(24, help="So gio nhin lai")) -> N
                 "error": res.error,
             }
         )
-        status = "OK " if res.ok else "FAIL"
-        typer.echo(f"{status} {src.id:28s} {len(res.articles):3d} bai  {res.latency_ms:5d}ms"
-                   f"  {res.error or ''}")
-    failed = [r for r in rows if not r["ok"]]
-    typer.echo(f"\n{len(rows) - len(failed)}/{len(rows)} nguon OK")
-    if failed:
+        status = "FAIL " if not res.ok else ("STALE" if res.stale else "OK   ")
+        age = f"{res.newest_item_age_h}h" if res.newest_item_age_h is not None else "-"
+        typer.echo(f"{status} {src.id:26s} {len(res.articles):3d} bai  {res.latency_ms:5d}ms"
+                   f"  moi nhat: {age:>6s}  {res.error or ''}")
+
+    failed = [r["id"] for r in rows if not r["ok"]]
+    stale = [r["id"] for r in rows if r["stale"]]
+    typer.echo(f"\n{len(rows) - len(failed)}/{len(rows)} nguon OK"
+               + (f", {len(stale)} nguon DONG BANG: {stale}" if stale else ""))
+    if failed or stale:
         raise typer.Exit(code=1)
 
 
@@ -126,7 +130,7 @@ def show_config() -> None:
     """In cau hinh hien tai (da che secret)."""
     s = get_settings()
     data = s.model_dump()
-    for key in ("anthropic_api_key", "google_chat_webhook_url", "postgres_dsn"):
+    for key in ("openai_api_key", "google_chat_webhook_url", "postgres_dsn"):
         if data.get(key):
             data[key] = str(data[key])[:18] + "..."
     typer.echo(json.dumps(data, ensure_ascii=False, indent=2, default=str))

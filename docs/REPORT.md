@@ -131,7 +131,7 @@ Không phụ thuộc LangSmith/Langfuse. Bảy bảng, cây span dựng bằng `
 
 View `v_run_overview` gộp sẵn: số tin, số span, chi phí LLM, số nguồn hỏng, số nguồn đóng băng.
 
-**Chi phí** quy đổi trong [`llm.py`](../src/news_bot/llm.py) theo bảng giá Anthropic API: Opus 5 $5/$25 per MTok, Sonnet 5 $2/$10, Haiku 4.5 $1/$5; cache read tính 0.1×. Model lạ trả `0` thay vì đoán bừa.
+**Chi phí** quy đổi trong [`llm.py`](../src/news_bot/llm.py) theo bảng giá OpenAI API (đọc 20/09/2026, bậc short context, tier Standard): `gpt-6-astra` $10/$50 per MTok, `gpt-5.6-sol` $4/$20, `gpt-5.6-terra` $2/$12, `gpt-5.6-luna` $0.20/$1.20. Bậc long context đắt gấp đôi. Model không có trong bảng trả `0` thay vì đoán bừa.
 
 ### 3.6 Airflow
 
@@ -150,18 +150,24 @@ View `v_run_overview` gộp sẵn: số tin, số span, chi phí LLM, số ngu�
 
 ---
 
-## 4. Chi phí dự kiến
+## 4. Chi phí — số đo thật
 
-Ước tính, chưa đo bằng `count_tokens`. Giả định: 24 bài shortlist/ngày, mỗi prompt ~3.000 token vào (tiếng Việt tốn token hơn tiếng Anh) và ~400 token ra; 1 lần gọi biên tập.
+Một lần chạy đầy đủ ngày 20/09/2026, lấy thẳng từ bảng `llm_call`:
 
-| Cấu hình | Mỗi ngày | 20 ngày làm việc |
-|---|---|---|
-| Opus 5 cho cả hai (mặc định) | ~$0,65 | ~$13 |
-| Sonnet 5 tóm tắt + Opus 5 biên tập | ~$0,30 | ~$6 |
+| Model | Việc | Lần gọi | Token vào | Token ra | USD | Độ trễ TB |
+|---|---|---|---|---|---|---|
+| `gpt-5.6-terra` | tóm tắt | 24 | 37.199 | 5.427 | $0,1395 | 3,4 s |
+| `gpt-6-astra` | biên tập | 1 | 3.500 | 797 | $0,0749 | 15,8 s |
+| | **tổng** | **25** | **40.699** | **6.224** | **$0,2144** | |
 
-Cần gạt chi phí: đổi `SUMMARIZER_MODEL=claude-sonnet-5` trong `.env`. Số liệu thật nằm trong `llm_call.cost_usd` sau vài ngày chạy — đo rồi hãy chỉnh.
+**$0,21/ngày ≈ $4,3/tháng** (20 ngày làm việc). Cần gạt chi phí rõ nhất: đổi
+`SUMMARIZER_MODEL=gpt-5.6-luna` ($0,20/$1,20 thay vì $2/$12) — bước tóm tắt rơi
+xuống khoảng $0,014, tổng còn **~$0,09/ngày ≈ $1,8/tháng**. Đo lại bằng
+`llm_call.cost_usd` sau khi đổi rồi hãy chốt.
 
----
+Ban đầu stack viết cho Claude; chuyển sang OpenAI theo yêu cầu vì key sẵn có là
+key OpenAI. Chỉ `llm.py` phải sửa — LangGraph, prompt và structured output đi qua
+trừu tượng của LangChain nên giữ nguyên.
 
 ## 5. Hiện trạng & việc còn lại
 
@@ -206,12 +212,24 @@ Ngoài ra, tham số task **không được trùng tên context key của Airflo
 (`logical_date`, `run_id`, ...) — decorator sẽ chèn default và làm vỡ chữ ký hàm
 hoặc lặng lẽ truyền giá trị của Airflow. DAG dùng `digest_day`, `pipeline_run_id`.
 
+**Đã bắn thật lên Google Chat**
+
+Chạy đầy đủ với LLM ngày 20/09/2026: 304 bài nạp → 292 bài chưa từng lên bản tin
+→ 285 cụm → 24 bài tóm tắt (0 lỗi) → biên tập chọn 10 tin, `mode=llm`, 44 giây,
+$0,2144. Card 10 tin gửi tới space `AAQAvr7hjRY`, HTTP 200.
+
+Bộ lọc `already_sent_urls()` hoạt động đúng: lần gửi trước đã loại 12 bài khỏi
+danh sách ứng viên của lần này.
+
+Một lỗi hiển thị lộ ra khi nhìn card thật trên Google Chat: header ở chế độ đường
+lùi in `Ban tin ngay 2026-09-20` không dấu, cạnh subtitle có dấu. Quy ước viết
+không dấu chỉ dành cho comment trong code, không dành cho chuỗi người dùng đọc.
+Đã sửa, và ngày hiển thị đổi sang `dd/mm/yyyy`.
+
 **Còn lại chưa kiểm chứng**
 
 - `docker-compose.yml` và `Dockerfile.airflow` chưa build lần nào (máy không có Docker).
 - Tính song song thật của các task `ingest` đã map: `airflow dags test` chạy tuần tự.
-- Toàn bộ nhánh gọi LLM: chưa có `ANTHROPIC_API_KEY` nên `compose` luôn đi đường
-  lùi `mode=fallback`. Prompt, structured output và bảng `llm_call` chưa chạy thật lần nào.
 
 **Nên làm tiếp**
 
