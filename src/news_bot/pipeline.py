@@ -92,7 +92,8 @@ def ingest_one(run_id: str, source_id: str) -> dict:
     )
     if result.stale:
         log.warning("source.stale", source_id=source_id,
-                    newest_item_age_h=result.newest_item_age_h)
+                    newest_item_age_h=result.newest_item_age_h,
+                    stale_after_h=result.stale_after_h)
     return {"source_id": source_id, "ok": result.ok, "stale": result.stale,
             "found": total, "new": new,
             "newest_item_age_h": result.newest_item_age_h, "error": result.error}

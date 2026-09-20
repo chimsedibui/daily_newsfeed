@@ -16,13 +16,21 @@ from .fetcher import fetch, fetch_best_effort
 log = get_logger(__name__)
 
 
+# Nguon duoc coi la "chet lam sang" khi bai moi nhat qua nguong nay. Nguong
+# scale theo nhip cua chinh nguon do: mot newsletter tuan (lookback 336h) im
+# 10 ngay la binh thuong, con feed tin hang ngay im 10 ngay la da hong.
+STALE_FLOOR_HOURS = 168
+STALE_FACTOR = 1.5
+
+
 class CollectResult:
-    def __init__(self) -> None:
+    def __init__(self, stale_after_h: int = STALE_FLOOR_HOURS) -> None:
         self.articles: list[Article] = []
         self.http_status: int | None = None
         self.latency_ms: int = 0
         self.error: str | None = None
         self.newest_item_age_h: int | None = None
+        self.stale_after_h = stale_after_h
 
     @property
     def ok(self) -> bool:
@@ -30,8 +38,9 @@ class CollectResult:
 
     @property
     def stale(self) -> bool:
-        """Feed tra 200 nhung bai moi nhat da qua 7 ngay -> gan nhu chac chan da bi bo."""
-        return self.newest_item_age_h is not None and self.newest_item_age_h > 168
+        """Feed tra 200 nhung noi dung dong bang lau hon nhip cua chinh no."""
+        return (self.newest_item_age_h is not None
+                and self.newest_item_age_h > self.stale_after_h)
 
 
 def _to_article(item: RawItem) -> Article:
@@ -61,11 +70,16 @@ def collect_source(source: Source, lookback_hours: int | None = None) -> Collect
     s = get_settings()
     lookback_hours = lookback_hours or source.lookback_hours or s.lookback_hours
     cutoff = datetime.now(UTC) - timedelta(hours=lookback_hours)
-    result = CollectResult()
+    result = CollectResult(
+        stale_after_h=max(STALE_FLOOR_HOURS, int(lookback_hours * STALE_FACTOR))
+    )
     started = time.perf_counter()
 
     try:
-        resp = fetch(source.url, timeout=source.timeout_s, headers=source.headers)
+        # URL co the chua {since} - vi du GitHub Search API can moc ngay trong
+        # chinh chuoi truy van. Thay bang ngay dau cua cua so thoi gian.
+        url = source.url.replace("{since}", cutoff.date().isoformat())
+        resp = fetch(url, timeout=source.timeout_s, headers=source.headers)
         result.http_status = resp.status_code
         if resp.status_code != 200:
             result.error = f"HTTP {resp.status_code}"

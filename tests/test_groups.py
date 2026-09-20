@@ -127,3 +127,24 @@ def test_hf_papers_parser_survives_garbage():
     src = Source(id="hf", publisher="HF", url="https://x", strategy="hf_papers")
     assert parse_hf_papers(b"{not json", src) == []
     assert parse_hf_papers(b'{"error": "nope"}', src) == []
+
+
+def test_stale_threshold_scales_with_source_cadence():
+    """Newsletter tuan im 12 ngay la binh thuong; feed hang ngay thi khong."""
+    from news_bot.sources.collector import CollectResult
+
+    weekly = CollectResult(stale_after_h=int(336 * 1.5))
+    weekly.newest_item_age_h = 309
+    assert not weekly.stale
+
+    daily = CollectResult(stale_after_h=168)
+    daily.newest_item_age_h = 309
+    assert daily.stale
+
+
+def test_stale_is_false_when_no_dated_items():
+    from news_bot.sources.collector import CollectResult
+
+    res = CollectResult()
+    assert res.newest_item_age_h is None
+    assert not res.stale

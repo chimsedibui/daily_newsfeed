@@ -163,4 +163,64 @@ def parse_hf_papers(content: bytes, source: Source) -> list[RawItem]:
     return items
 
 
-PARSERS = {"rss": parse_rss, "sitemap": parse_sitemap, "hf_papers": parse_hf_papers}
+def parse_github_repos(content: bytes, source: Source) -> list[RawItem]:
+    """GitHub Search API: repo moi tao dang len sao nhanh.
+
+    Day la tin hieu trend that - nguoi ta bam sao vi dung duoc, khong phai vi
+    ai do tra tien PR. Khong can token: 60 request/gio cho IP an danh, ta goi
+    mot lan moi ngay.
+    """
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        return []
+
+    limit = source.max_items or 1000
+    items: list[RawItem] = []
+    for repo in (data.get("items") or [])[:limit]:
+        name = repo.get("full_name")
+        if not name:
+            continue
+        stars = int(repo.get("stargazers_count") or 0)
+        desc = (repo.get("description") or "").strip()
+        lang = repo.get("language") or "khong ro"
+        topics = ", ".join((repo.get("topics") or [])[:5])
+
+        published = None
+        if repo.get("created_at"):
+            try:
+                published = dateparser.parse(repo["created_at"])
+            except (ValueError, OverflowError):
+                published = None
+
+        lead = f"{stars:,} sao · {lang}"
+        if topics:
+            lead += f" · {topics}"
+        if desc:
+            lead += "\n" + desc
+
+        items.append(
+            RawItem(
+                source_id=source.id,
+                publisher=source.publisher,
+                category=source.category,
+                group=source.group,
+                # 3.000 sao tro len duoc coi la hien tuong -> cong toi da 0.5.
+                weight=source.weight + min(stars, 3000) / 6000.0,
+                title=f"{name} - {desc[:90]}" if desc else name,
+                url=repo.get("html_url") or f"https://github.com/{name}",
+                lead=lead,
+                published_at=published,
+                raw={"strategy": "github_trending", "stars": stars,
+                     "language": lang, "repo": name},
+            )
+        )
+    return items
+
+
+PARSERS = {
+    "rss": parse_rss,
+    "sitemap": parse_sitemap,
+    "hf_papers": parse_hf_papers,
+    "github_trending": parse_github_repos,
+}
