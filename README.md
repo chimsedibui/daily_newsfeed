@@ -43,7 +43,11 @@ Dựng Postgres + Airflow:
 docker compose up -d
 ```
 
-Postgres ở `localhost:5432` (news/news/news), Airflow UI ở `http://localhost:8080`. File `sql/001_init.sql` được nạp tự động lúc khởi tạo volume; nếu volume đã có sẵn thì chạy `news-bot init-db`.
+Postgres ở `localhost:5432` (news/news/news), Airflow UI ở `http://localhost:8080`.
+
+**Không có Docker?** Xem [docs/SETUP-WSL.md](docs/SETUP-WSL.md) — Postgres chạy rootless + Airflow trong venv riêng. Đó là cách stack này đang được kiểm chứng.
+
+> **Hai môi trường Python, cố ý tách rời.** Airflow 2.10 ghim `sqlalchemy<2.0`, còn app dùng psycopg3 (`postgresql+psycopg://`) vốn cần SQLAlchemy 2.x. Gộp một venv là app chết ngay ở bước kết nối DB. DAG chạy mỗi task chạm app bằng `@task.external_python` trỏ tới interpreter của venv app; container làm y hệt — xem `Dockerfile.airflow`.
 
 ### Lấy webhook URL của Google Chat
 
@@ -116,3 +120,12 @@ ruff check src tests airflow
 ```
 
 22 test, không cần Postgres và không gọi LLM — các node nhận `config` rỗng là tự tắt trace.
+
+Kiểm chứng ở tầng tích hợp:
+
+```bash
+./scripts/pg.sh start
+news-bot init-db && news-bot run      # LangGraph end-to-end
+./scripts/airflow.sh check            # lỗi import DAG
+./scripts/airflow.sh test             # chạy thật cả DAG
+```

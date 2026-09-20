@@ -1,0 +1,29 @@
+# Airflow + mot venv RIENG cho app, trong cung mot container.
+#
+# Vi sao khong cai app vao thang moi truong cua Airflow (_PIP_ADDITIONAL_REQUIREMENTS):
+# Airflow 2.10.5 ghim sqlalchemy>=1.4.36,<2.0 con app can SQLAlchemy 2.x de dung
+# driver psycopg3. Cai chung se keo SQLAlchemy ve 1.4 va app chet o buoc ket noi
+# DB (NoSuchModuleError: sqlalchemy.dialects:postgresql.psycopg).
+#
+# ExternalPythonOperator can interpreter nam trong CUNG container, nen venv app
+# duoc dung ngay tai day chu khong phai mot service rieng.
+FROM apache/airflow:2.10.5-python3.12
+
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+USER airflow
+
+# Driver Postgres cho chinh Airflow (metadata DB).
+RUN pip install --no-cache-dir psycopg2-binary
+
+# --- venv rieng cho app ---
+COPY --chown=airflow:root pyproject.toml /opt/news/pyproject.toml
+COPY --chown=airflow:root src /opt/news/src
+RUN python -m venv /opt/app-venv \
+    && /opt/app-venv/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/app-venv/bin/pip install --no-cache-dir -e /opt/news
+
+# DAG doc bien nay de biet goi interpreter nao.
+ENV NEWS_APP_PYTHON=/opt/app-venv/bin/python

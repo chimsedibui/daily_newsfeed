@@ -122,6 +122,11 @@ def deliver(run_id: str, digest_id: int | None, logical_date: date) -> dict:
     thread_key = f"daily-news-{logical_date.isoformat()}" if s.google_chat_thread_per_day else None
     try:
         names = send_message(row["payload"], thread_key=thread_key)
+        # O DRY_RUN khong co gi duoc gui di that. Danh dau 'sent' se lam bo loc
+        # already_sent_urls() loai vinh vien cac bai nay khoi ban tin ngay mai.
+        if s.dry_run:
+            repo.mark_digest(digest_id, "skipped")
+            return {"status": "skipped", "reason": "dry_run"}
         repo.mark_digest(digest_id, "sent", message_name=names[0] if names else None)
         return {"status": "sent", "messages": names}
     except Exception as exc:

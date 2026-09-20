@@ -11,3 +11,10 @@ airflow/airflow.db
 airflow/standalone_admin_password.txt
 data/
 *.html.cache
+
+# Postgres rootless cho may dev (scripts/pg.sh)
+.pgdata/
+
+# Airflow local (scripts/airflow.sh)
+.airflow/
+.venv-airflow/

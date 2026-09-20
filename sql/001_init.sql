@@ -142,9 +142,17 @@ CREATE TABLE IF NOT EXISTS digest (
 CREATE INDEX IF NOT EXISTS idx_digest_date ON digest (digest_date DESC);
 
 -- ========== 4. View tiện cho quan sát ==========
-CREATE OR REPLACE VIEW v_run_overview AS
-SELECT r.run_id, r.logical_date, r.status, r.started_at, r.duration_ms,
-       (r.metrics->>'articles_collected')::int  AS articles_collected,
+-- DROP trước: CREATE OR REPLACE VIEW không đổi được danh sách/tên cột, nên khi
+-- view đổi schema thì lần chạy init-db tiếp theo sẽ lỗi nếu chỉ dùng REPLACE.
+DROP VIEW IF EXISTS v_run_overview;
+CREATE VIEW v_run_overview AS
+SELECT r.run_id, r.logical_date, r.trigger, r.dag_run_id, r.status,
+       r.started_at, r.duration_ms,
+       -- So bai moi lay tu source_health chu khong tu metrics: source_health
+       -- duoc ghi ngay trong buoc ingest nen dung ca khi run chet giua chung.
+       (SELECT coalesce(sum(items_new), 0)
+          FROM source_health h WHERE h.run_id = r.run_id) AS articles_new,
+       (r.metrics->>'articles_loaded')::int     AS articles_loaded,
        (r.metrics->>'articles_selected')::int   AS articles_selected,
        (SELECT count(*) FROM node_span s WHERE s.run_id = r.run_id) AS spans,
        (SELECT coalesce(sum(cost_usd),0) FROM llm_call l WHERE l.run_id = r.run_id) AS llm_cost_usd,

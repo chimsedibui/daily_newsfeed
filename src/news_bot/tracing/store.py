@@ -91,25 +91,32 @@ class TraceStore:
 
     def finish_run(self, status: str, metrics: dict | None = None,
                    error: str | None = None) -> None:
-        duration = int((time.perf_counter() - self._t0) * 1000)
+        # duration_ms phai tinh tu started_at trong DB, KHONG tu dong ho trong
+        # tien trinh: Airflow goi finalize() o mot task/tien trinh khac voi task
+        # da tao run, nen self._t0 o day chi vai mili giay tuoi.
         with session_scope() as s:
-            s.execute(
+            duration = s.execute(
                 text(
                     """
                     UPDATE pipeline_run
-                    SET status = :status, finished_at = now(), duration_ms = :duration,
-                        metrics = metrics || CAST(:metrics AS jsonb), error = :error
+                    SET status = :status,
+                        finished_at = now(),
+                        duration_ms = GREATEST(
+                            0, (EXTRACT(EPOCH FROM (now() - started_at)) * 1000)::int
+                        ),
+                        metrics = metrics || CAST(:metrics AS jsonb),
+                        error = :error
                     WHERE run_id = :run_id
+                    RETURNING duration_ms
                     """
                 ),
                 {
                     "run_id": self.run_id,
                     "status": status,
-                    "duration": duration,
                     "metrics": json.dumps(metrics or {}, ensure_ascii=False, default=str),
                     "error": truncate(error or "", 4000) or None,
                 },
-            )
+            ).scalar()
         log.info("run.finished", run_id=self.run_id, status=status, duration_ms=duration)
 
     def attach(self) -> None:

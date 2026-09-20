@@ -73,9 +73,12 @@ def run_all(
     run_id = pipeline.start_run(day, trigger="cli")
     typer.echo(f"run_id = {run_id}")
 
+    ingested = []
     for src in load_sources():
         res = pipeline.ingest_one(run_id, src.id)
-        typer.echo(f"  {src.id:28s} new={res['new']:3d} {res['error'] or ''}")
+        ingested.append(res)
+        flag = "FAIL " if not res["ok"] else ("STALE" if res["stale"] else "     ")
+        typer.echo(f"  {flag} {src.id:26s} new={res['new']:3d} {res['error'] or ''}")
 
     result = pipeline.build_digest(run_id, day)
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
@@ -83,7 +86,19 @@ def run_all(
     if send and result.get("digest_id"):
         typer.echo(json.dumps(pipeline.deliver(run_id, result["digest_id"], day),
                               ensure_ascii=False))
-    pipeline.finalize(run_id, "success", result.get("metrics"))
+
+    # Cung tieu chi voi task finalize cua Airflow: nguon hong hoac dong bang
+    # thi run la 'partial', khong phai 'success'.
+    failed = [r["source_id"] for r in ingested if not r["ok"]]
+    stale = [r["source_id"] for r in ingested if r["stale"]]
+    pipeline.finalize(
+        run_id,
+        "partial" if (failed or stale) else "success",
+        {**(result.get("metrics") or {}),
+         "new_articles": sum(r["new"] for r in ingested),
+         "failed_sources": failed,
+         "stale_sources": stale},
+    )
 
 
 @app.command("preview")

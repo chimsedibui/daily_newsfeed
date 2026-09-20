@@ -171,15 +171,47 @@ Cần gạt chi phí: đổi `SUMMARIZER_MODEL=claude-sonnet-5` trong `.env`. S�
 - Gom trùng, xếp hạng, trích xuất fulltext, render card: chạy trên tin thật.
 - 22 unit test xanh, `ruff` sạch. Test không cần Postgres, không gọi LLM.
 
-**Chưa chạy được ở máy này**
+**Đã chạy end-to-end trên WSL** (20/09/2026)
 
-Máy khảo sát không có Docker nên **Postgres và Airflow chưa chạy end-to-end**. Phần chưa được kiểm chứng thực tế: DDL trong `sql/001_init.sql`, các truy vấn trong `repository.py`, DAG parse trên Airflow thật. Bước đầu tiên khi có Docker:
+Không cài được Docker (không có quyền admin), nên stack được dựng bằng PostgreSQL 17.11
+chạy rootless và Airflow trong venv riêng — chi tiết ở [SETUP-WSL.md](SETUP-WSL.md).
+Phần trước đây chưa kiểm chứng nay đã chạy thật:
 
-```bash
-docker compose up -d
-news-bot init-db
-DRY_RUN=true news-bot run     # chạy hết pipeline, không gọi LLM, không bắn webhook
-```
+| Hạng mục | Kết quả |
+|---|---|
+| `sql/001_init.sql` | 8 bảng + view, áp dụng lại nhiều lần không lỗi |
+| `repository.py` | UPSERT nhận đúng bài mới: run 1 = 274 bài, run 2 = 1 bài |
+| LangGraph qua CLI | 274 bài → 269 cụm → 24 shortlist → digest 12 tin, 6,7 s |
+| DAG trên Airflow | 7 task, 14 ingest map song song, toàn bộ SUCCESS, ~29 s |
+| Trace | 7 span/run, `source_health` đủ 14 dòng, `dag_run_id` ghi đúng |
+
+**Bốn khiếm khuyết lộ ra khi triển khai và đã sửa**
+
+1. **Airflow ghim `sqlalchemy<2.0`.** `_PIP_ADDITIONAL_REQUIREMENTS` trong
+   docker-compose bản đầu cài app thẳng vào môi trường Airflow — làm vậy thì
+   SQLAlchemy bị hạ xuống 1.4 và app chết với `NoSuchModuleError:
+   sqlalchemy.dialects:postgresql.psycopg`. Đã tách hai venv, DAG dùng
+   `@task.external_python`, và thêm `Dockerfile.airflow` làm đúng như vậy trong container.
+2. **`pipeline_run.duration_ms` luôn bằng 0.** Nó tính bằng đồng hồ trong tiến
+   trình, mà Airflow gọi `finalize` ở một task/tiến trình khác với task tạo run.
+   Nay tính bằng SQL từ `started_at`.
+3. **View `v_run_overview` đọc khoá metrics không tồn tại** (`articles_collected`).
+   Nay lấy số bài mới thẳng từ `source_health` — dùng được cả khi run chết giữa chừng.
+   Kèm theo: `CREATE OR REPLACE VIEW` không đổi được danh sách cột, phải `DROP` trước.
+4. **`DRY_RUN` đánh dấu bản tin là `sent`.** Không gửi gì mà đánh dấu đã gửi thì
+   bộ lọc `already_sent_urls()` loại vĩnh viễn các bài đó khỏi bản tin hôm sau.
+   Nay là `skipped`.
+
+Ngoài ra, tham số task **không được trùng tên context key của Airflow**
+(`logical_date`, `run_id`, ...) — decorator sẽ chèn default và làm vỡ chữ ký hàm
+hoặc lặng lẽ truyền giá trị của Airflow. DAG dùng `digest_day`, `pipeline_run_id`.
+
+**Còn lại chưa kiểm chứng**
+
+- `docker-compose.yml` và `Dockerfile.airflow` chưa build lần nào (máy không có Docker).
+- Tính song song thật của các task `ingest` đã map: `airflow dags test` chạy tuần tự.
+- Toàn bộ nhánh gọi LLM: chưa có `ANTHROPIC_API_KEY` nên `compose` luôn đi đường
+  lùi `mode=fallback`. Prompt, structured output và bảng `llm_call` chưa chạy thật lần nào.
 
 **Nên làm tiếp**
 
