@@ -22,10 +22,10 @@ class Settings(BaseSettings):
 
     # LLM
     openai_api_key: str = ""
-    # Tom tat: 24 lan goi/ngay -> chon bac gia trung binh.
-    summarizer_model: str = "gpt-5.6-terra"
-    # Bien tap: 1 lan goi/ngay, can chat luong nhat.
-    editor_model: str = "gpt-6-astra"
+    # Ca hai buoc dung bac gia re nhat cua OpenAI ($0.20/$1.20 per MTok).
+    # Day la rang buoc ngan sach cua du an, khong phai mac dinh ky thuat.
+    summarizer_model: str = "gpt-5.6-luna"
+    editor_model: str = "gpt-5.6-luna"
     llm_max_concurrency: int = 4
 
     # Storage
@@ -36,12 +36,25 @@ class Settings(BaseSettings):
     news_timezone: str = "Asia/Ho_Chi_Minh"
     lookback_hours: int = 24
     max_articles_per_source: int = 40
-    digest_size: int = 12
+    # So tin toi da trong tung ban tin. 0 = dung mac dinh cua groups.py
+    # (serious 12 + life 6 = 18 tin/ngay).
+    digest_size_serious: int = 0
+    digest_size_life: int = 0
+    # Tran cung cho tong so tin ca ngay, tinh gop moi nhom. Day la rang buoc
+    # nguoi dung dat ra (15-20 tin/ngay), khong phai so ky thuat -> chan o buoc
+    # render de cau hinh sai trong .env khong the vuot qua.
+    digest_total_cap: int = 20
     fulltext_max_articles: int = 30
     http_concurrency: int = 8
     user_agent: str = (
         "updating-news-bot/0.1 (+internal daily digest; contact: infra@example.com)"
     )
+
+    # Thoi tiet (Open-Meteo: mien phi, khong can API key)
+    weather_enabled: bool = True
+    weather_latitude: float = 21.0278       # Ha Noi
+    weather_longitude: float = 105.8342
+    weather_place: str = "Hà Nội"
 
     # Ops
     log_level: str = "INFO"
@@ -55,12 +68,17 @@ class Source(BaseModel):
     publisher: str
     url: str
     category: str | None = None
-    strategy: str = "rss"          # rss | sitemap
+    group: str = "serious"          # serious | life - xem groups.py
+    strategy: str = "rss"          # rss | sitemap | hf_papers
     fulltext: bool = True
     enabled: bool = True
     weight: float = 1.0
     timeout_s: int = 20
     max_items: int | None = None
+    # Cua so thoi gian rieng cho nguon nay. None = dung LOOKBACK_HOURS chung.
+    # Cac nguon xuat ban thua (FED, blog hang AI, paper) can cua so rong hon,
+    # neu khong chung se khong bao gio lot vao ban tin.
+    lookback_hours: int | None = None
     headers: dict[str, str] = Field(default_factory=dict)
 
 

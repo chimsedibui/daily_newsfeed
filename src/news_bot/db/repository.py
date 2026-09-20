@@ -87,6 +87,7 @@ def fetch_window(lookback_hours: int, limit: int = 500) -> list[Article]:
             source_id=r["source_id"],
             publisher=r["publisher"],
             category=r["category"],
+            group=(r["raw"] or {}).get("group", "serious"),
             title=r["title"],
             lead=r["lead"],
             body=r["body"],
@@ -153,8 +154,9 @@ def save_summaries(run_id: str, summaries: Iterable[Summary]) -> None:
 
 _INSERT_DIGEST = text(
     """
-    INSERT INTO digest (run_id, digest_date, headline, overview, payload, article_ids, status)
-    VALUES (:run_id, :digest_date, :headline, :overview,
+    INSERT INTO digest (run_id, group_key, digest_date, headline, overview, payload,
+                        article_ids, status)
+    VALUES (:run_id, :group_key, :digest_date, :headline, :overview,
             CAST(:payload AS jsonb), CAST(:article_ids AS jsonb), :status)
     RETURNING id
     """
@@ -163,6 +165,7 @@ _INSERT_DIGEST = text(
 
 def save_digest(
     run_id: str,
+    group: str,
     digest_date: date,
     headline: str,
     overview: str,
@@ -175,6 +178,7 @@ def save_digest(
             _INSERT_DIGEST,
             {
                 "run_id": run_id,
+                "group_key": group,
                 "digest_date": digest_date,
                 "headline": headline,
                 "overview": overview,
@@ -188,21 +192,37 @@ def save_digest(
 def get_digest(digest_id: int) -> dict | None:
     with session_scope() as s:
         row = s.execute(
-            text("SELECT id, run_id, digest_date, headline, payload, status FROM digest "
-                 "WHERE id = :id"),
+            text("SELECT id, run_id, group_key, digest_date, headline, payload, status "
+                 "FROM digest WHERE id = :id"),
             {"id": digest_id},
         ).mappings().first()
     return dict(row) if row else None
 
 
-def latest_pending_digest(run_id: str) -> dict | None:
+def pending_digests(run_id: str) -> list[dict]:
+    """Cac ban tin cua run chua gui, theo dung thu tu nhom.
+
+    Thu tu gui do DB quyet dinh chu khong do thu tu goi ham: task `deliver` cua
+    Airflow co the retry doc lap, luc do state trong bo nho da mat.
+    """
     with session_scope() as s:
-        row = s.execute(
-            text("SELECT id, run_id, digest_date, headline, payload, status FROM digest "
-                 "WHERE run_id = :run_id ORDER BY id DESC LIMIT 1"),
+        rows = s.execute(
+            text(
+                """
+                SELECT id, run_id, group_key, digest_date, headline, payload, status
+                FROM digest
+                WHERE run_id = :run_id AND status = 'pending'
+                ORDER BY CASE group_key
+                             WHEN 'serious' THEN 1
+                             WHEN 'life'    THEN 2
+                             WHEN 'weather' THEN 3
+                             ELSE 9
+                         END, id
+                """
+            ),
             {"run_id": run_id},
-        ).mappings().first()
-    return dict(row) if row else None
+        ).mappings().all()
+    return [dict(r) for r in rows]
 
 
 _MARK_DIGEST = text(

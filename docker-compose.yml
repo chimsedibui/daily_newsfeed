@@ -43,8 +43,8 @@ services:
       POSTGRES_DSN: postgresql+psycopg://news:news@postgres:5432/news
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_CHAT_WEBHOOK_URL: ${GOOGLE_CHAT_WEBHOOK_URL:-}
-      SUMMARIZER_MODEL: ${SUMMARIZER_MODEL:-gpt-5.6-terra}
-      EDITOR_MODEL: ${EDITOR_MODEL:-gpt-6-astra}
+      SUMMARIZER_MODEL: ${SUMMARIZER_MODEL:-gpt-5.6-luna}
+      EDITOR_MODEL: ${EDITOR_MODEL:-gpt-5.6-luna}
       DRY_RUN: ${DRY_RUN:-false}
       LOG_JSON: "true"
     volumes:

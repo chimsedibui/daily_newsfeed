@@ -1,6 +1,7 @@
-"""Parse RSS va news-sitemap thanh RawItem."""
+"""Parse RSS, news-sitemap va API daily papers cua Hugging Face thanh RawItem."""
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
 
@@ -59,6 +60,7 @@ def parse_rss(content: bytes, source: Source) -> list[RawItem]:
                 source_id=source.id,
                 publisher=source.publisher,
                 category=source.category,
+                group=source.group,
                 weight=source.weight,
                 title=title,
                 url=link,
@@ -97,6 +99,7 @@ def parse_sitemap(content: bytes, source: Source) -> list[RawItem]:
                 source_id=source.id,
                 publisher=source.publisher,
                 category=source.category,
+                group=source.group,
                 weight=source.weight,
                 title=title,
                 url=loc.get_text(strip=True),
@@ -107,4 +110,57 @@ def parse_sitemap(content: bytes, source: Source) -> list[RawItem]:
     return items
 
 
-PARSERS = {"rss": parse_rss, "sitemap": parse_sitemap}
+def parse_hf_papers(content: bytes, source: Source) -> list[RawItem]:
+    """API daily papers cua Hugging Face.
+
+    Tra ve paper da duoc cong dong upvote, tuc la da loc san - khac han firehose
+    arXiv (~500 paper/ngay). Upvote duoc dua vao `weight` de bai nhieu upvote
+    len hang cao hon o buoc rank.
+    """
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+
+    limit = source.max_items or 1000
+    items: list[RawItem] = []
+    for entry in data[:limit]:
+        paper = entry.get("paper") or {}
+        arxiv_id = paper.get("id")
+        title = (paper.get("title") or entry.get("title") or "").strip()
+        if not arxiv_id or not title:
+            continue
+        upvotes = int(paper.get("upvotes") or 0)
+        published = None
+        raw_date = entry.get("publishedAt") or paper.get("publishedAt")
+        if raw_date:
+            try:
+                published = dateparser.parse(raw_date)
+            except (ValueError, OverflowError):
+                published = None
+        items.append(
+            RawItem(
+                source_id=source.id,
+                publisher=source.publisher,
+                category=source.category,
+                group=source.group,
+                # 50 upvote tro len duoc coi la dang chu y -> cong toi da 0.5.
+                weight=source.weight + min(upvotes, 50) / 100.0,
+                title=title,
+                url=f"https://huggingface.co/papers/{arxiv_id}",
+                lead=(paper.get("summary") or "").strip() or None,
+                published_at=published,
+                raw={
+                    "strategy": "hf_papers",
+                    "arxiv_id": arxiv_id,
+                    "upvotes": upvotes,
+                    "arxiv_url": f"https://arxiv.org/abs/{arxiv_id}",
+                },
+            )
+        )
+    return items
+
+
+PARSERS = {"rss": parse_rss, "sitemap": parse_sitemap, "hf_papers": parse_hf_papers}

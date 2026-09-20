@@ -38,8 +38,22 @@ def get_client() -> httpx.Client:
 )
 def fetch(url: str, timeout: float | None = None,
           headers: dict[str, str] | None = None) -> httpx.Response:
-    """GET co retry. 4xx (tru 429) khong retry vi retry cung vo ich."""
+    """GET co retry. Dung cho FEED - mat mot feed la mat ca mot nguon tin.
+
+    4xx (tru 429) khong retry vi retry cung vo ich.
+    """
     resp = get_client().get(url, timeout=timeout, headers=headers or None)
     if resp.status_code >= 500 or resp.status_code == 429:
         resp.raise_for_status()
     return resp
+
+
+# Fetch fulltext la best-effort: hong thi da co lead tu RSS. Khong retry va
+# timeout ngan - mot host treo tung lam ca run keo dai gan 7 phut vi 3 lan thu
+# x backoff luy thua tren nhieu bai cung luc.
+BEST_EFFORT_TIMEOUT = httpx.Timeout(12.0, connect=5.0)
+
+
+def fetch_best_effort(url: str) -> httpx.Response:
+    """GET mot lan, timeout ngan, khong retry."""
+    return get_client().get(url, timeout=BEST_EFFORT_TIMEOUT)

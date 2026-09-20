@@ -64,9 +64,9 @@ CREATE TABLE IF NOT EXISTS llm_call (
     id                BIGSERIAL PRIMARY KEY,
     run_id            UUID      NOT NULL REFERENCES pipeline_run(run_id) ON DELETE CASCADE,
     span_id           UUID      REFERENCES node_span(span_id) ON DELETE SET NULL,
-    provider          TEXT      NOT NULL DEFAULT 'anthropic',
+    provider          TEXT      NOT NULL DEFAULT 'openai',
     model             TEXT      NOT NULL,
-    purpose           TEXT,                                   -- summarize | rank | compose
+    purpose           TEXT,                                   -- summarize | compose:<nhom>
     input_tokens      INTEGER   DEFAULT 0,
     output_tokens     INTEGER   DEFAULT 0,
     cache_read_tokens INTEGER   DEFAULT 0,
@@ -127,6 +127,8 @@ CREATE TABLE IF NOT EXISTS article_summary (
 CREATE TABLE IF NOT EXISTS digest (
     id            BIGSERIAL PRIMARY KEY,
     run_id        UUID NOT NULL REFERENCES pipeline_run(run_id) ON DELETE CASCADE,
+    -- serious | life | weather. Moi nhom la mot message Google Chat rieng.
+    group_key     TEXT NOT NULL DEFAULT 'serious',
     digest_date   DATE NOT NULL,
     channel       TEXT NOT NULL DEFAULT 'google_chat',
     headline      TEXT,
@@ -140,6 +142,8 @@ CREATE TABLE IF NOT EXISTS digest (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_digest_date ON digest (digest_date DESC);
+-- Cot them sau khi bang da ton tai o cac cai dat cu.
+ALTER TABLE digest ADD COLUMN IF NOT EXISTS group_key TEXT NOT NULL DEFAULT 'serious';
 
 -- ========== 4. View tiện cho quan sát ==========
 -- DROP trước: CREATE OR REPLACE VIEW không đổi được danh sách/tên cột, nên khi

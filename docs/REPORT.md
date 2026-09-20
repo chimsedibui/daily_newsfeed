@@ -169,6 +169,26 @@ Ban đầu stack viết cho Claude; chuyển sang OpenAI theo yêu cầu vì key
 key OpenAI. Chỉ `llm.py` phải sửa — LangGraph, prompt và structured output đi qua
 trừu tượng của LangChain nên giữ nguyên.
 
+## 4b. Chọn model: đo chứ không đoán
+
+Câu hỏi "dùng `gpt-5-nano` cho rẻ được không" có câu trả lời phản trực giác. Đo bằng
+chính prompt tóm tắt của pipeline, trên chính bài trong DB (20/09/2026):
+
+| Model | $/1M vào | $/1M ra | Token ra/bài | Giây/bài | **USD cho 36 bài** |
+|---|---|---|---|---|---|
+| `gpt-5.6-luna` | $0,20 | $1,20 | ~220 | 2,6 | **$0,016** |
+| `gpt-5-nano` | $0,05 | $0,40 | 3.300–4.000 | 15–18 | **$0,055** |
+
+`gpt-5-nano` rẻ hơn 4 lần mỗi token nhưng **đắt hơn 3,5 lần mỗi bài**, và chậm hơn
+6 lần. Lý do: nó là model suy luận thế hệ cũ, tiêu 3–4 nghìn token suy luận trước
+khi trả ra bản tóm tắt ~220 token. Tệ hơn: ở `max_tokens=1500` (mức pipeline đang
+dùng) nó **hỏng 6/6 bài** với `LengthFinishReasonError` — hết token trước khi kịp
+trả structured output; phải nới lên 10.000 mới chạy được.
+
+Bài học chung: với structured output, giá mỗi token không dự đoán được chi phí mỗi
+việc. Chỉ token thực tế tiêu tốn mới nói lên điều đó, và bảng `llm_call` là nơi đọc
+con số đó.
+
 ## 5. Hiện trạng & việc còn lại
 
 **Đã chạy thật, đã kiểm chứng**

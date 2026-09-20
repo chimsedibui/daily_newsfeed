@@ -7,10 +7,11 @@ from pydantic import BaseModel, Field
 
 
 class RawItem(BaseModel):
-    """Một entry thô từ RSS/sitemap, chưa fetch fulltext."""
+    """Một entry thô từ RSS/sitemap/API, chưa fetch fulltext."""
     source_id: str
     publisher: str
     category: str | None = None
+    group: str = "serious"
     weight: float = 1.0
     title: str
     url: str
@@ -26,6 +27,7 @@ class Article(BaseModel):
     source_id: str
     publisher: str
     category: str | None = None
+    group: str = "serious"
     weight: float = 1.0
     title: str
     url_canonical: str
@@ -73,6 +75,7 @@ class DigestItem(BaseModel):
 
 
 class Digest(BaseModel):
+    group: str = "serious"
     digest_date: str
     headline: str
     overview: str

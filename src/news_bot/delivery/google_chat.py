@@ -14,6 +14,7 @@ from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import httpx
 
+from .. import groups
 from ..config import get_settings
 from ..logging_setup import get_logger
 from ..models import Digest
@@ -104,14 +105,15 @@ def build_card_message(digest: Digest) -> dict:
         }
     )
 
+    group = groups.get(digest.group)
     return {
         "cardsV2": [
             {
-                "cardId": f"daily-news-{digest.digest_date}",
+                "cardId": f"daily-news-{digest.group}-{digest.digest_date}",
                 "card": {
                     "header": {
-                        "title": truncate(digest.headline, 80),
-                        "subtitle": f"Bản tin ngày {_vn_date(digest.digest_date)}",
+                        "title": f"{group.icon} {truncate(digest.headline, 78)}",
+                        "subtitle": f"{group.title} · {_vn_date(digest.digest_date)}",
                         "imageType": "CIRCLE",
                     },
                     "sections": sections,
@@ -119,6 +121,63 @@ def build_card_message(digest: Digest) -> dict:
             }
         ]
     }
+
+
+def build_weather_message(digest: Digest) -> dict:
+    """Card thoi tiet: khong co danh sach tin, chi so lieu + vai dong khuyen nghi."""
+    st = digest.stats or {}
+    group = groups.get("weather")
+
+    def row(label: str, value: str) -> dict:
+        return {"decoratedText": {"topLabel": label, "text": value, "wrapText": True}}
+
+    rain = f"{st.get('rain_prob', 0)}%"
+    if (st.get("rain_mm") or 0) > 0:
+        rain += f" · {st['rain_mm']:.1f}mm"
+
+    facts = [
+        row("Nhiệt độ", f"<b>{st.get('t_min', 0):.0f}–{st.get('t_max', 0):.0f}°C</b>"
+                       + (f" · hiện {st['now']:.0f}°C" if st.get("now") is not None else "")
+                       + (f" (cảm giác {st['feels_like']:.0f}°C)"
+                          if st.get("feels_like") is not None else "")),
+        row("Khả năng mưa", rain),
+        row("Gió · Độ ẩm", f"{st.get('wind_kmh', 0):.0f} km/h"
+                           + (f" · {st['humidity']:.0f}%" if st.get("humidity") is not None else "")),
+        row("UV · Mặt trời", f"UV {st.get('uv', 0):.0f} · mọc {st.get('sunrise', '')} "
+                             f"· lặn {st.get('sunset', '')}"),
+    ]
+    advice = st.get("advice") or []
+
+    return {
+        "cardsV2": [
+            {
+                "cardId": f"daily-weather-{digest.digest_date}",
+                "card": {
+                    "header": {
+                        "title": f"{st.get('icon', group.icon)} {truncate(digest.headline, 78)}",
+                        "subtitle": f"{group.title} · {_vn_date(digest.digest_date)}",
+                        "imageType": "CIRCLE",
+                    },
+                    "sections": [
+                        {"widgets": facts},
+                        {
+                            "widgets": [
+                                {"textParagraph": {"text": "• " + _escape(line)}}
+                                for line in advice
+                            ]
+                        },
+                    ],
+                },
+            }
+        ]
+    }
+
+
+def build_message(digest: Digest) -> dict:
+    """Chon dung loai card theo nhom."""
+    if digest.group == "weather":
+        return build_weather_message(digest)
+    return build_card_message(digest)
 
 
 def split_message(payload: dict, max_bytes: int = MAX_MESSAGE_BYTES) -> list[dict]:

@@ -11,7 +11,7 @@ from ..models import Article, RawItem
 from ..utils import canonical_url, content_hash, ensure_aware, simhash
 from .extract import extract_article
 from .feeds import PARSERS
-from .fetcher import fetch
+from .fetcher import fetch, fetch_best_effort
 
 log = get_logger(__name__)
 
@@ -41,6 +41,7 @@ def _to_article(item: RawItem) -> Article:
         source_id=item.source_id,
         publisher=item.publisher,
         category=item.category,
+        group=item.group,
         weight=item.weight,
         title=item.title,
         url_canonical=canon,
@@ -50,7 +51,7 @@ def _to_article(item: RawItem) -> Article:
         image_url=item.image_url,
         content_hash=content_hash(item.title, item.lead),
         simhash=simhash(f"{item.title} {item.lead or ''}"),
-        raw=item.raw,
+        raw={**item.raw, "group": item.group},
     )
 
 
@@ -58,7 +59,7 @@ def collect_source(source: Source, lookback_hours: int | None = None) -> Collect
     """Fetch + parse 1 feed. Khong nem exception ra ngoai: mot nguon chet
     khong duoc lam hong ca run - loi duoc ghi vao source_health."""
     s = get_settings()
-    lookback_hours = lookback_hours or s.lookback_hours
+    lookback_hours = lookback_hours or source.lookback_hours or s.lookback_hours
     cutoff = datetime.now(UTC) - timedelta(hours=lookback_hours)
     result = CollectResult()
     started = time.perf_counter()
@@ -106,7 +107,7 @@ def collect_source(source: Source, lookback_hours: int | None = None) -> Collect
 
 def _enrich_one(article: Article) -> Article:
     try:
-        resp = fetch(article.url_original)
+        resp = fetch_best_effort(article.url_original)
         if resp.status_code != 200:
             return article
         data = extract_article(resp.text, article.url_original)

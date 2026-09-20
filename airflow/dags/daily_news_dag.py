@@ -4,9 +4,12 @@ Phan vai:
   - Airflow  = dieu phoi: lich chay, retry tho, fan-out theo nguon, canh bao.
   - LangGraph = noi dung: dedupe -> rank -> tom tat -> bien tap (1 task duy nhat).
 
-    preflight -> create_run -> ingest[source] (mapped) -> check_sources
-                                                       -> build_digest
-                                                       -> deliver -> finalize
+    preflight -> create_run -> ingest[source] (mapped) -> check_sources -> build_digest -,
+                            |                                                             |-> deliver -> finalize
+                            `-> build_weather ----------------------------------------------'
+
+build_weather chay song song va doc lap voi nhanh tin tuc: khong co bai tin nao
+thi van phai co du bao, va Open-Meteo hong thi khong duoc keo do ca bo tin tuc.
 
 HAI MOI TRUONG PYTHON, KHONG DUNG CHUNG
 ---------------------------------------
@@ -129,30 +132,46 @@ def daily_news_digest():
 
         return pipeline.build_digest(pipeline_run_id, date.fromisoformat(digest_day))
 
-    @task.external_python(python=APP_PYTHON, retries=3,
-                          retry_delay=timedelta(minutes=2))
-    def deliver(pipeline_run_id: str, digest: dict, digest_day: str) -> dict:
+    @task.external_python(python=APP_PYTHON, retries=2,
+                          execution_timeout=timedelta(minutes=5))
+    def build_weather(pipeline_run_id: str, digest_day: str) -> dict:
         from datetime import date
 
         from news_bot import pipeline
 
-        return pipeline.deliver(
-            pipeline_run_id, digest.get("digest_id"), date.fromisoformat(digest_day)
-        )
+        return pipeline.build_weather(pipeline_run_id, date.fromisoformat(digest_day))
+
+    @task.external_python(python=APP_PYTHON, retries=3,
+                          retry_delay=timedelta(minutes=2),
+                          trigger_rule=TriggerRule.ALL_DONE)
+    def deliver(pipeline_run_id: str, digest_day: str) -> dict:
+        """Gui moi ban tin `pending` cua run.
+
+        ALL_DONE: thoi tiet hong thi van gui tin tuc, va nguoc lai. Danh sach
+        lay tu DB nen retry khong gui lai cai da gui.
+        """
+        from datetime import date
+
+        from news_bot import pipeline
+
+        return pipeline.deliver_all(pipeline_run_id, date.fromisoformat(digest_day))
 
     @task.external_python(python=APP_PYTHON, trigger_rule=TriggerRule.ALL_DONE)
-    def finalize(pipeline_run_id: str, digest: dict, health: dict, delivery: dict) -> None:
+    def finalize(pipeline_run_id: str, digest: dict, health: dict, delivery: dict,
+                 weather: dict) -> None:
         """Chay ca khi nhanh tren that bai -> pipeline_run khong ket o 'running'."""
         from news_bot import pipeline
 
         digest = digest or {}
         health = health or {}
         delivery = delivery or {}
+        weather = weather or {}
 
         status = "success"
         if delivery.get("status") not in ("sent", "skipped", "already_sent"):
             status = "failed"
-        elif health.get("failed_sources") or health.get("stale_sources"):
+        elif (health.get("failed_sources") or health.get("stale_sources")
+              or weather.get("skipped")):
             status = "partial"
 
         pipeline.finalize(
@@ -164,6 +183,8 @@ def daily_news_digest():
                 "failed_sources": health.get("failed_sources", []),
                 "stale_sources": health.get("stale_sources", []),
                 "delivery_status": delivery.get("status"),
+                "delivered": delivery.get("sent", []),
+                "weather_ok": not weather.get("skipped", True),
             },
         )
 
@@ -172,10 +193,12 @@ def daily_news_digest():
     ingested = ingest.partial(pipeline_run_id=pipeline_run_id).expand(source_id=sources)
     health = check_sources(ingested)
     digest = build_digest(pipeline_run_id=pipeline_run_id, digest_day=DS_LOCAL)
-    sent = deliver(pipeline_run_id=pipeline_run_id, digest=digest, digest_day=DS_LOCAL)
+    weather = build_weather(pipeline_run_id=pipeline_run_id, digest_day=DS_LOCAL)
+    sent = deliver(pipeline_run_id=pipeline_run_id, digest_day=DS_LOCAL)
 
     health >> digest
-    finalize(pipeline_run_id, digest, health, sent)
+    [digest, weather] >> sent
+    finalize(pipeline_run_id, digest, health, sent, weather)
 
 
 daily_news_digest()

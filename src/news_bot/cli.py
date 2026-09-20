@@ -26,7 +26,11 @@ def init_db() -> None:
 
 
 @app.command("check-sources")
-def check_sources(lookback: int = typer.Option(24, help="So gio nhin lai")) -> None:
+def check_sources(
+    lookback: int = typer.Option(
+        None, help="Ep cua so thoi gian (gio). Mac dinh: theo cau hinh tung nguon."
+    ),
+) -> None:
     """Thu tung feed, in ra so bai lay duoc. Khong ghi DB - dung de kiem tra cau hinh."""
     pipeline.bootstrap()
     rows = []
@@ -85,11 +89,13 @@ def run_all(
         typer.echo(f"  {flag} {src.id:26s} new={res['new']:3d} {res['error'] or ''}")
 
     result = pipeline.build_digest(run_id, day)
-    typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+    weather = pipeline.build_weather(run_id, day)
+    typer.echo(json.dumps({**result, "weather": weather}, ensure_ascii=False,
+                          indent=2, default=str))
 
-    if send and result.get("digest_id"):
-        typer.echo(json.dumps(pipeline.deliver(run_id, result["digest_id"], day),
-                              ensure_ascii=False))
+    if send:
+        typer.echo(json.dumps(pipeline.deliver_all(run_id, day),
+                              ensure_ascii=False, default=str))
 
     # Cung tieu chi voi task finalize cua Airflow: nguon hong hoac dong bang
     # thi run la 'partial', khong phai 'success'.
@@ -118,11 +124,32 @@ def preview(digest_id: int) -> None:
 
 
 @app.command("send")
-def send_digest(digest_id: int, run_id: str = typer.Option(...)) -> None:
-    """Gui lai mot ban tin da render (dung khi webhook hong luc chay that)."""
+def send_digest(
+    run_id: str = typer.Option(..., help="run_id cua lan chay"),
+    digest_id: int = typer.Option(None, help="Chi gui mot ban tin cu the"),
+) -> None:
+    """Gui cac ban tin dang `pending` cua mot run (hoac mot ban tin cu the)."""
     pipeline.bootstrap()
-    typer.echo(json.dumps(pipeline.deliver(run_id, digest_id, _today()),
-                          ensure_ascii=False))
+    if digest_id is not None:
+        out = pipeline.deliver(run_id, digest_id, _today())
+    else:
+        out = pipeline.deliver_all(run_id, _today())
+    typer.echo(json.dumps(out, ensure_ascii=False, default=str))
+
+
+@app.command("weather")
+def weather_now() -> None:
+    """In du bao thoi tiet hien tai (khong ghi DB, khong gui)."""
+    from .weather import build_weather_digest
+
+    pipeline.bootstrap()
+    digest = build_weather_digest()
+    if digest is None:
+        raise typer.Exit(code=1)
+    typer.echo(digest.headline)
+    typer.echo(digest.overview)
+    for line in digest.stats.get("advice", []):
+        typer.echo(f"  - {line}")
 
 
 @app.command("config")

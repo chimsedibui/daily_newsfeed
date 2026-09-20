@@ -19,6 +19,13 @@ PRICING: dict[str, dict[str, float]] = {
     "gpt-5.6-sol":   {"input": 4.00,  "cached_input": 0.40, "output": 20.00},
     "gpt-5.6-terra": {"input": 2.00,  "cached_input": 0.20, "output": 12.00},
     "gpt-5.6-luna":  {"input": 0.20,  "cached_input": 0.02, "output": 1.20},
+    # The he cu (08/2025). Gia moi token thap nhat NHUNG la model suy luan tieu
+    # 3.000-6.000 token dau ra cho mot bai tom tat (luna chi ~220), nen thuc te
+    # dat hon luna ~4 lan va cham hon ~8 lan. Do ngay 20/09/2026, xem docs/REPORT.md.
+    "gpt-5-nano":    {"input": 0.05,  "cached_input": 0.005, "output": 0.40},
+    "gpt-5-mini":    {"input": 0.25,  "cached_input": 0.025, "output": 2.00},
+    "gpt-5.4-nano":  {"input": 0.20,  "cached_input": 0.02,  "output": 1.25},
+    "gpt-5.4-mini":  {"input": 0.75,  "cached_input": 0.075, "output": 4.50},
 }
 
 

@@ -18,12 +18,12 @@ from ..config import get_settings
 from ..logging_setup import get_logger
 from ..tracing.store import TraceStore
 from ..utils import today_in
-from .nodes.compose import compose_digest
+from .nodes.compose import compose_digests
 from .nodes.dedupe import cluster_articles
 from .nodes.enrich import enrich_shortlist
 from .nodes.load import load_articles
 from .nodes.rank import rank_clusters
-from .nodes.render import render_payload
+from .nodes.render import render_payloads
 from .nodes.summarize import summarize_articles
 from .state import GraphState
 
@@ -46,8 +46,8 @@ def build_graph(checkpointer=None):
     g.add_node("rank", rank_clusters)
     g.add_node("enrich", enrich_shortlist)
     g.add_node("summarize", summarize_articles)
-    g.add_node("compose", compose_digest)
-    g.add_node("render", render_payload)
+    g.add_node("compose", compose_digests)
+    g.add_node("render", render_payloads)
 
     g.set_entry_point("load")
     g.add_conditional_edges("load", _has_articles, {"continue": "cluster", "stop": END})

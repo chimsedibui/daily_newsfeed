@@ -1,101 +1,271 @@
-# Danh mục nguồn tin. Mỗi entry = 1 feed.
+# Danh mục nguồn tin.
+#
+# group quyết định bài đi vào bản tin nào:
+#   serious -> công nghệ, AI/paper, chính trị thế giới, chứng khoán, quỹ, FED
+#   life    -> xe cộ, du lịch, bóng đá, bóng chuyền
+# Thời tiết là bản tin thứ ba, không lấy từ feed (xem src/news_bot/weather.py).
+#
 # strategy:
-#   rss      -> parse feed XML (rẻ nhất, ưu tiên)
-#   sitemap  -> đọc <urlset> news sitemap (dùng khi site không mở RSS)
-# fulltext: true -> fetch trang bài viết (SSR HTML) để lấy JSON-LD + body
+#   rss        -> parse feed XML
+#   sitemap    -> đọc news sitemap (khi site không mở RSS)
+#   hf_papers  -> API daily papers của Hugging Face (JSON, đã xếp hạng theo upvote)
+#
+# Trạng thái mọi URL dưới đây đã được gọi thật ngày 20/09/2026.
+# lookback_hours: cua so thoi gian rieng cho nguon xuat ban thua (FED, blog hang
+# AI, paper). Khong co thi dung LOOKBACK_HOURS chung trong .env.
+# Bo loc already_sent_urls() dam bao mot bai chi len ban tin dung mot lan.
 defaults:
   strategy: rss
   fulltext: true
   weight: 1.0
   timeout_s: 20
+  group: serious
 
 sources:
-  # ---------- VnExpress (RSS mở, ổn định nhất trong các báo VN) ----------
-  - id: vnexpress_tin_moi
-    publisher: VnExpress
-    category: tong-hop
-    url: https://vnexpress.net/rss/tin-moi-nhat.rss
+  # ============================================================
+  # AI / PAPER / KIẾN TRÚC MÔ HÌNH
+  # ============================================================
+  # Daily papers của Hugging Face: paper đã được cộng đồng upvote, tức là đã lọc
+  # sẵn. Dùng cái này thay vì firehose arXiv (~500 paper/ngày, hầu hết không liên quan).
+  - id: hf_daily_papers
+    lookback_hours: 96
+    publisher: Hugging Face Papers
+    category: ai-paper
+    strategy: hf_papers
+    url: https://huggingface.co/api/daily_papers
+    weight: 1.6
+    max_items: 20
+    fulltext: false        # summary trong API đã là abstract, không cần fetch thêm
+
+  - id: openai_news
+    lookback_hours: 120
+    publisher: OpenAI
+    category: ai
+    url: https://openai.com/news/rss.xml
+    weight: 1.5
+    max_items: 15
+  - id: deepmind_blog
+    lookback_hours: 168
+    publisher: Google DeepMind
+    category: ai
+    url: https://deepmind.google/blog/rss.xml
+    weight: 1.5
+    max_items: 15
+  - id: hf_blog
+    lookback_hours: 168
+    publisher: Hugging Face
+    category: ai
+    url: https://huggingface.co/blog/feed.xml
+    weight: 1.3
+    max_items: 15
+
+  # arXiv thô: ~500 paper/ngày, và feed rỗng vào T7/CN (<skipDays>).
+  # Bật khi cần theo dõi sâu một chuyên mục, kèm max_items thật chặt.
+  - id: arxiv_cs_cl
+    lookback_hours: 72
+    publisher: arXiv cs.CL
+    category: ai-paper
+    url: https://rss.arxiv.org/rss/cs.CL
+    max_items: 25
+    fulltext: false
+    enabled: false
+
+  # ============================================================
+  # CÔNG NGHỆ
+  # ============================================================
+  - id: theverge
+    publisher: The Verge
+    category: cong-nghe
+    url: https://www.theverge.com/rss/index.xml
     weight: 1.2
-  - id: vnexpress_kinh_doanh
-    publisher: VnExpress
-    category: kinh-doanh
-    url: https://vnexpress.net/rss/kinh-doanh.rss
+  - id: arstechnica
+    publisher: Ars Technica
+    category: cong-nghe
+    url: https://feeds.arstechnica.com/arstechnica/index
+    weight: 1.2
+  - id: techcrunch
+    publisher: TechCrunch
+    category: cong-nghe
+    url: https://techcrunch.com/feed/
+    weight: 1.1
+  - id: mit_tech_review
+    lookback_hours: 96
+    publisher: MIT Technology Review
+    category: cong-nghe
+    url: https://www.technologyreview.com/feed/
     weight: 1.3
   - id: vnexpress_khcn
     publisher: VnExpress
     category: cong-nghe
     url: https://vnexpress.net/rss/khoa-hoc-cong-nghe.rss
-    weight: 1.4
-  - id: vnexpress_startup
-    publisher: VnExpress
-    category: startup
-    url: https://vnexpress.net/rss/startup.rss
     weight: 1.2
+
+  # ============================================================
+  # CHÍNH TRỊ THẾ GIỚI
+  # ============================================================
+  - id: bbc_world
+    publisher: BBC World
+    category: the-gioi
+    url: https://feeds.bbci.co.uk/news/world/rss.xml
+    weight: 1.3
+  - id: aljazeera
+    publisher: Al Jazeera
+    category: the-gioi
+    url: https://www.aljazeera.com/xml/rss/all.xml
+    weight: 1.1
+    max_items: 25
+  - id: nyt_world
+    publisher: New York Times
+    category: the-gioi
+    url: https://rss.nytimes.com/services/xml/rss/nyt/World.xml
+    weight: 1.2
+    max_items: 30
   - id: vnexpress_the_gioi
     publisher: VnExpress
     category: the-gioi
     url: https://vnexpress.net/rss/the-gioi.rss
-  - id: vnexpress_en
-    publisher: VnExpress English
-    category: tong-hop-en
-    url: https://e.vnexpress.net/rss/news.rss
-    enabled: false
 
-  # ---------- Tuổi Trẻ ----------
-  - id: tuoitre_tin_moi
-    publisher: Tuổi Trẻ
-    category: tong-hop
-    url: https://tuoitre.vn/home.rss   # /rss/tin-moi-nhat.rss chi 301 ve day
-  - id: tuoitre_kinh_doanh
-    publisher: Tuổi Trẻ
-    category: kinh-doanh
-    url: https://tuoitre.vn/rss/kinh-doanh.rss
-
-  # ---------- Thanh Niên ----------
-  - id: thanhnien_home
-    publisher: Thanh Niên
-    category: tong-hop
-    url: https://thanhnien.vn/rss/home.rss
-
-  # ---------- Dân Trí ----------
-  - id: dantri_home
-    publisher: Dân Trí
-    category: tong-hop
-    url: https://dantri.com.vn/rss/home.rss
-  - id: dantri_cong_nghe
-    publisher: Dân Trí
-    category: cong-nghe
-    url: https://dantri.com.vn/rss/cong-nghe.rss
-
-  # ---------- VietnamNet (không có feed "tin-moi-nhat", phải đi theo chuyên mục) ----------
-  # Luu y: VietnamNet dat feed o goc, KHONG co tien to /rss/ (/rss/x.rss chi 301
-  # ve /x.rss). Feed /cong-nghe.rss da chet tu 03/2025 -> khong dung.
-  - id: vietnamnet_thoi_su
-    publisher: VietnamNet
-    category: thoi-su
-    url: https://vietnamnet.vn/thoi-su.rss
+  # ============================================================
+  # FED / QUỸ / THỊ TRƯỜNG QUỐC TẾ
+  # ============================================================
+  # FED công bố thẳng, không qua trung gian diễn giải -> weight cao nhất.
+  - id: fed_monetary
+    lookback_hours: 168
+    publisher: Federal Reserve
+    category: fed
+    url: https://www.federalreserve.gov/feeds/press_monetary.xml
+    weight: 2.0
+  - id: fed_press_all
+    lookback_hours: 120
+    publisher: Federal Reserve
+    category: fed
+    url: https://www.federalreserve.gov/feeds/press_all.xml
+    weight: 1.6
+  - id: fed_speeches
+    lookback_hours: 120
+    publisher: Federal Reserve
+    category: fed
+    url: https://www.federalreserve.gov/feeds/speeches.xml
+    weight: 1.4
+  - id: cnbc_markets
+    publisher: CNBC
+    category: thi-truong
+    url: https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258
+    weight: 1.2
     max_items: 25
+  - id: cnbc_investing
+    lookback_hours: 72
+    publisher: CNBC
+    category: quy-dau-tu
+    url: https://www.cnbc.com/id/10000664/device/rss/rss.html
+    weight: 1.2
+    max_items: 25
+  - id: marketwatch
+    publisher: MarketWatch
+    category: thi-truong
+    url: https://feeds.content.dowjones.io/public/rss/mw_topstories
+    weight: 1.2
+  - id: yahoo_finance
+    publisher: Yahoo Finance
+    category: thi-truong
+    url: https://finance.yahoo.com/news/rssindex
+    weight: 1.0
+    max_items: 25
+
+  # ============================================================
+  # CHỨNG KHOÁN / KINH DOANH VIỆT NAM
+  # ============================================================
+  - id: cafef_chung_khoan
+    publisher: CafeF
+    category: chung-khoan
+    url: https://cafef.vn/thi-truong-chung-khoan.rss
+    weight: 1.4
+  - id: cafef_vi_mo
+    publisher: CafeF
+    category: vi-mo
+    url: https://cafef.vn/vi-mo-dau-tu.rss
+    weight: 1.2
+  - id: vneconomy_chung_khoan
+    publisher: VnEconomy
+    category: chung-khoan
+    url: https://vneconomy.vn/chung-khoan.rss
+    weight: 1.2
+    max_items: 25
+  - id: vnexpress_kinh_doanh
+    publisher: VnExpress
+    category: kinh-doanh
+    url: https://vnexpress.net/rss/kinh-doanh.rss
+    weight: 1.2
   - id: vietnamnet_kinh_doanh
     publisher: VietnamNet
     category: kinh-doanh
     url: https://vietnamnet.vn/kinh-doanh.rss
     max_items: 25
 
-  # ---------- CafeF (tài chính / chứng khoán) ----------
-  - id: cafef_chung_khoan
-    publisher: CafeF
-    category: tai-chinh
-    url: https://cafef.vn/thi-truong-chung-khoan.rss
+  # ============================================================
+  # ĐỜI SỐNG: XE
+  # ============================================================
+  - id: vnexpress_oto_xe_may
+    publisher: VnExpress
+    category: xe
+    group: life
+    url: https://vnexpress.net/rss/oto-xe-may.rss
     weight: 1.3
-  - id: cafef_vi_mo
-    publisher: CafeF
-    category: vi-mo
-    url: https://cafef.vn/vi-mo-dau-tu.rss
+    max_items: 30
+  - id: dantri_oto_xe_may
+    publisher: Dân Trí
+    category: xe
+    group: life
+    url: https://dantri.com.vn/rss/o-to-xe-may.rss
+    weight: 1.2
+    max_items: 30
 
-  # ---------- Nguồn chặn RSS: dùng news sitemap ----------
-  - id: znews_sitemap
-    publisher: ZNews
-    category: tong-hop
-    strategy: sitemap
-    url: https://znews.vn/sitemaps/news.xml
-    enabled: false   # bật sau khi xác nhận đường dẫn sitemap hiện hành
+  # ============================================================
+  # ĐỜI SỐNG: DU LỊCH
+  # ============================================================
+  - id: vnexpress_du_lich
+    publisher: VnExpress
+    category: du-lich
+    group: life
+    url: https://vnexpress.net/rss/du-lich.rss
+    weight: 1.1
+    max_items: 30
+  - id: dantri_du_lich
+    publisher: Dân Trí
+    category: du-lich
+    group: life
+    url: https://dantri.com.vn/rss/du-lich.rss
+    max_items: 30
+
+  # ============================================================
+  # ĐỜI SỐNG: BÓNG ĐÁ / BÓNG CHUYỀN
+  # ============================================================
+  # Không có feed riêng cho bóng chuyền đủ sống (bongchuyen.net chỉ 1 item,
+  # thethao247 không mở feed chuyên mục). Lấy feed thể thao chung rồi lọc bằng
+  # từ khoá trong rank.py - xem BOOST_KEYWORDS nhóm life.
+  - id: vnexpress_the_thao
+    publisher: VnExpress
+    category: the-thao
+    group: life
+    url: https://vnexpress.net/rss/the-thao.rss
+    weight: 1.2
+    max_items: 40
+  - id: thanhnien_the_thao
+    publisher: Thanh Niên
+    category: the-thao
+    group: life
+    url: https://thanhnien.vn/rss/the-thao.rss
+    max_items: 30
+  - id: thethao247
+    publisher: Thể Thao 247
+    category: the-thao
+    group: life
+    url: https://thethao247.vn/trang-chu.rss
+    max_items: 25
+  - id: bongda24h
+    publisher: Bóng Đá 24h
+    category: bong-da
+    group: life
+    url: https://bongda24h.vn/RSS/1.rss
+    weight: 1.2
+    max_items: 20

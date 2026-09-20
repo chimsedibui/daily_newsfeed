@@ -24,9 +24,8 @@ class GraphState(TypedDict, total=False):
     clusters: list[list[Article]]  # nhom bai cung su kien
     shortlist: list[Article]     # da rank, chuan bi goi LLM
     summaries: list[Summary]
-    digest: Digest | None
-    payload: dict                # body gui Google Chat
-    digest_id: int | None
+    digests: list[Digest]        # mot Digest cho moi nhom (serious, life)
+    digest_ids: list[int]
 
     metrics: Annotated[dict, _merge_metrics]
     errors: Annotated[list[str], _append]
