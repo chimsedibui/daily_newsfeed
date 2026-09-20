@@ -1,0 +1,55 @@
+# Stack dev: Postgres (app + Airflow metadata) + Airflow standalone.
+# Production nen tach DB metadata cua Airflow ra khoi DB nghiep vu.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: news
+      POSTGRES_PASSWORD: news
+      POSTGRES_DB: news
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U news"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  airflow:
+    image: apache/airflow:2.10.5-python3.11
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://news:news@postgres:5432/news
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DEFAULT_TIMEZONE: Asia/Ho_Chi_Minh
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      PYTHONPATH: /opt/news/src
+      # Bien moi truong cua app - doc tu .env cua host
+      POSTGRES_DSN: postgresql+psycopg://news:news@postgres:5432/news
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_CHAT_WEBHOOK_URL: ${GOOGLE_CHAT_WEBHOOK_URL:-}
+      SUMMARIZER_MODEL: ${SUMMARIZER_MODEL:-claude-opus-5}
+      EDITOR_MODEL: ${EDITOR_MODEL:-claude-opus-5}
+      DRY_RUN: ${DRY_RUN:-false}
+      LOG_JSON: "true"
+      _PIP_ADDITIONAL_REQUIREMENTS: >-
+        httpx[http2]>=0.27 feedparser>=6.0.11 lxml>=5.2 beautifulsoup4>=4.12
+        python-dateutil>=2.9 pyyaml>=6.0 pydantic>=2.7 pydantic-settings>=2.3
+        sqlalchemy>=2.0.30 psycopg[binary]>=3.1.19 structlog>=24.1 tenacity>=8.3
+        langgraph>=0.2.28 langchain-core>=0.3.0 langchain-anthropic>=0.2.0
+    volumes:
+      - .:/opt/news
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+    ports:
+      - "8080:8080"
+    command: standalone
+
+volumes:
+  pgdata:

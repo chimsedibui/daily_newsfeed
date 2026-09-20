@@ -45,7 +45,7 @@ sources:
   - id: tuoitre_tin_moi
     publisher: Tuổi Trẻ
     category: tong-hop
-    url: https://tuoitre.vn/rss/tin-moi-nhat.rss
+    url: https://tuoitre.vn/home.rss   # /rss/tin-moi-nhat.rss chi 301 ve day
   - id: tuoitre_kinh_doanh
     publisher: Tuổi Trẻ
     category: kinh-doanh
@@ -62,21 +62,23 @@ sources:
     publisher: Dân Trí
     category: tong-hop
     url: https://dantri.com.vn/rss/home.rss
-  - id: dantri_suc_manh_so
+  - id: dantri_cong_nghe
     publisher: Dân Trí
     category: cong-nghe
-    url: https://dantri.com.vn/rss/suc-manh-so.rss
+    url: https://dantri.com.vn/rss/cong-nghe.rss
 
   # ---------- VietnamNet (không có feed "tin-moi-nhat", phải đi theo chuyên mục) ----------
+  # Luu y: VietnamNet dat feed o goc, KHONG co tien to /rss/ (/rss/x.rss chi 301
+  # ve /x.rss). Feed /cong-nghe.rss da chet tu 03/2025 -> khong dung.
   - id: vietnamnet_thoi_su
     publisher: VietnamNet
     category: thoi-su
-    url: https://vietnamnet.vn/rss/thoi-su.rss
+    url: https://vietnamnet.vn/thoi-su.rss
     max_items: 25
-  - id: vietnamnet_cong_nghe
+  - id: vietnamnet_kinh_doanh
     publisher: VietnamNet
-    category: cong-nghe
-    url: https://vietnamnet.vn/rss/cong-nghe.rss
+    category: kinh-doanh
+    url: https://vietnamnet.vn/kinh-doanh.rss
     max_items: 25
 
   # ---------- CafeF (tài chính / chứng khoán) ----------

@@ -4,7 +4,9 @@ from __future__ import annotations
 import hashlib
 import re
 import unicodedata
+from datetime import date, datetime
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from zoneinfo import ZoneInfo
 
 _TRACKING_PREFIXES = ("utm_", "gclid", "fbclid", "zarsrc", "vn_source", "vn_campaign", "ref")
 _WS = re.compile(r"\s+")
@@ -87,3 +89,24 @@ def to_signed_64(value: int) -> int:
 def truncate(text: str, limit: int) -> str:
     text = (text or "").strip()
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
+def today_in(tz_name: str) -> date:
+    """Ngay hien tai theo mui gio nghiep vu.
+
+    Quan trong: server chay UTC, `date.today()` se tra ve ngay hom truoc trong
+    khoang 00:00-07:00 gio VN -> ban tin bi gan sai ngay.
+    """
+    return datetime.now(ZoneInfo(tz_name)).date()
+
+
+def ensure_aware(dt: datetime | None, tz_name: str) -> datetime | None:
+    """Gan mui gio cho datetime naive.
+
+    Bao VN (CafeF, VietnamNet) dang datetime khong kem offset trong JSON-LD.
+    De nguyen thi `astimezone()` se suy dien theo mui gio cua server - chay tren
+    container UTC se lech 7 tieng va lam sai diem do-moi khi xep hang.
+    """
+    if dt is None:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=ZoneInfo(tz_name))

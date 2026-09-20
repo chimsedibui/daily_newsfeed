@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # LLM
     anthropic_api_key: str = ""
-    summarizer_model: str = "claude-sonnet-5"
+    summarizer_model: str = "claude-opus-5"
     editor_model: str = "claude-opus-5"
     llm_max_concurrency: int = 4
 

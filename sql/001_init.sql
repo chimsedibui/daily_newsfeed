@@ -102,6 +102,9 @@ CREATE TABLE IF NOT EXISTS source_health (
     items_found INTEGER DEFAULT 0,
     items_new   INTEGER DEFAULT 0,
     latency_ms  INTEGER,
+    -- Tuoi cua bai moi nhat trong feed. Feed "chet lam sang" tra HTTP 200 nhung
+    -- noi dung dong bang hang nam -> chi cot nay phat hien duoc.
+    newest_item_age_h INTEGER,
     error       TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -146,5 +149,7 @@ SELECT r.run_id, r.logical_date, r.status, r.started_at, r.duration_ms,
        (SELECT count(*) FROM node_span s WHERE s.run_id = r.run_id) AS spans,
        (SELECT coalesce(sum(cost_usd),0) FROM llm_call l WHERE l.run_id = r.run_id) AS llm_cost_usd,
        (SELECT coalesce(sum(input_tokens+output_tokens),0) FROM llm_call l WHERE l.run_id = r.run_id) AS llm_tokens,
-       (SELECT count(*) FROM source_health h WHERE h.run_id = r.run_id AND NOT h.ok) AS failed_sources
+       (SELECT count(*) FROM source_health h WHERE h.run_id = r.run_id AND NOT h.ok) AS failed_sources,
+       (SELECT count(*) FROM source_health h
+         WHERE h.run_id = r.run_id AND h.newest_item_age_h > 168) AS stale_sources
 FROM pipeline_run r;

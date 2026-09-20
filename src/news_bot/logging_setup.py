@@ -33,6 +33,9 @@ def _postgres_processor(logger, method_name, event_dict):
 
 def configure_logging(level: str = "INFO", json_output: bool = True) -> None:
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=level.upper())
+    # httpx log moi request o INFO -> lam ngap log cua pipeline.
+    for noisy in ("httpx", "httpcore", "hpack", "urllib3"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     renderer = (
         structlog.processors.JSONRenderer(ensure_ascii=False)
         if json_output
