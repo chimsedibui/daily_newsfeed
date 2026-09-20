@@ -130,9 +130,11 @@ def show_config() -> None:
     """In cau hinh hien tai (da che secret)."""
     s = get_settings()
     data = s.model_dump()
+    # Chi giu tien to du de nhan dang (sk-proj, https://chat...), khong lo phan bi mat.
     for key in ("openai_api_key", "google_chat_webhook_url", "postgres_dsn"):
-        if data.get(key):
-            data[key] = str(data[key])[:18] + "..."
+        value = str(data.get(key) or "")
+        if value:
+            data[key] = f"{value[:8]}...({len(value)} ky tu)"
     typer.echo(json.dumps(data, ensure_ascii=False, indent=2, default=str))
 
 
