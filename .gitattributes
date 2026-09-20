@@ -1,0 +1,8 @@
+# Repo chay tren Linux/WSL. Ep LF de cac ban va chay tu Windows khong bien
+# shebang thanh "bash\r" va lam shell bao "set: pipefail: invalid option name".
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.sql text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf

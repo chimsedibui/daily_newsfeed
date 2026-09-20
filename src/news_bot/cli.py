@@ -152,6 +152,28 @@ def weather_now() -> None:
         typer.echo(f"  - {line}")
 
 
+@app.command("purge")
+def purge_cmd(
+    days: int = typer.Option(None, help="Mac dinh: RETENTION_DAYS trong .env"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Chi dem, khong xoa"),
+) -> None:
+    """Xoa du lieu cu hon N ngay va thu hoi dung luong."""
+    typer.echo(json.dumps(pipeline.purge_old_data(days, dry_run),
+                          ensure_ascii=False, indent=2, default=str))
+
+
+@app.command("db-size")
+def db_size_cmd() -> None:
+    """Kich thuoc tung bang trong schema news."""
+    from .retention import db_size
+
+    pipeline.bootstrap()
+    data = db_size()
+    for row in data["tables"]:
+        typer.echo(f"  {row['bang']:18s} {row['kich_thuoc']:>10s}")
+    typer.echo(f"  {'TONG':18s} {data['total']:>10s}")
+
+
 @app.command("config")
 def show_config() -> None:
     """In cau hinh hien tai (da che secret)."""

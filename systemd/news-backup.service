@@ -1,0 +1,9 @@
+[Unit]
+Description=news-bot sao luu Postgres
+After=news-postgres.service
+Requires=news-postgres.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=__REPO__
+ExecStart=/usr/bin/env bash "__REPO__/scripts/backup.sh" backup

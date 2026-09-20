@@ -1,0 +1,12 @@
+[Unit]
+Description=Sao luu news-bot hang ngay
+
+[Timer]
+# 02:00 gio may. Persistent=true -> may tat luc do thi chay bu khi bat len,
+# dieu nay quan trong voi WSL vi no khong chay 24/7.
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

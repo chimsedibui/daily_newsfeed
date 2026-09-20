@@ -148,3 +148,68 @@ def test_stale_is_false_when_no_dated_items():
     res = CollectResult()
     assert res.newest_item_age_h is None
     assert not res.stale
+
+
+def test_purge_days_zero_is_not_swallowed(monkeypatch):
+    """days=0 la gia tri hop le (xoa tat ca) nhung falsy - de bi `or` nuot."""
+    from news_bot import retention
+
+    captured = {}
+
+    class FakeResult:
+        rowcount = 0
+
+        @staticmethod
+        def scalar():
+            return 0
+
+    class FakeSession:
+        def execute(self, stmt, params=None):
+            captured.update(params or {})
+            return FakeResult()
+
+    class FakeScope:
+        def __enter__(self):
+            return FakeSession()
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(retention, "session_scope", lambda: FakeScope())
+    monkeypatch.setattr(retention, "db_size", lambda: {"total": "0 kB", "tables": []})
+
+    out = retention.purge(days=0, dry_run=True)
+    assert out["days"] == 0
+    assert captured["days"] == 0, "days=0 bi thay bang mac dinh"
+
+
+def test_purge_days_none_uses_configured_default(monkeypatch):
+    from news_bot import retention
+
+    captured = {}
+
+    class FakeResult:
+        rowcount = 0
+
+        @staticmethod
+        def scalar():
+            return 0
+
+    class FakeSession:
+        def execute(self, stmt, params=None):
+            captured.update(params or {})
+            return FakeResult()
+
+    class FakeScope:
+        def __enter__(self):
+            return FakeSession()
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(retention, "session_scope", lambda: FakeScope())
+    monkeypatch.setattr(retention, "db_size", lambda: {"total": "0 kB", "tables": []})
+
+    out = retention.purge(days=None, dry_run=True)
+    assert out["days"] == retention.get_settings().retention_days
+    assert captured["days"] == out["days"]

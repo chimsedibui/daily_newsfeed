@@ -18,7 +18,10 @@ class Settings(BaseSettings):
 
     # Delivery
     google_chat_webhook_url: str = ""
-    google_chat_thread_per_day: bool = True
+    # false = moi ban tin la mot message rieng o cuoi space. Gom vao thread
+    # thi cac message sau nam an trong thread va de bi bo qua - chi tien khi
+    # thu nghiem. Mac dinh cho chay that la false.
+    google_chat_thread_per_day: bool = False
 
     # LLM
     # openai | vertex. Vertex dung ADC (gcloud auth application-default login
@@ -63,6 +66,10 @@ class Settings(BaseSettings):
     weather_latitude: float = 21.0278       # Ha Noi
     weather_longitude: float = 105.8342
     weather_place: str = "Hà Nội"
+
+    # Giu du lieu bao nhieu ngay. Qua moc nay, pipeline_run bi xoa va CASCADE
+    # keo theo toan bo trace; article khong con ban tin nao tro toi cung bi xoa.
+    retention_days: int = 14
 
     # Ops
     log_level: str = "INFO"

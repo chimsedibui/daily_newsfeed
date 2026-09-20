@@ -195,6 +195,14 @@ def deliver_all(run_id: str, logical_date: date) -> dict:
     return {"status": overall, "sent": sent}
 
 
+def purge_old_data(days: int | None = None, dry_run: bool = False) -> dict:
+    """Don du lieu cu. Tach rieng de Airflow chay nhu mot task doc lap."""
+    bootstrap()
+    from .retention import purge
+
+    return purge(days=days, dry_run=dry_run)
+
+
 def finalize(run_id: str, status: str = "success", metrics: dict | None = None,
              error: str | None = None) -> None:
     bootstrap()

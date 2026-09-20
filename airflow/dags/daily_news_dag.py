@@ -5,8 +5,8 @@ Phan vai:
   - LangGraph = noi dung: dedupe -> rank -> tom tat -> bien tap (1 task duy nhat).
 
     preflight -> create_run -> ingest[source] (mapped) -> check_sources -> build_digest -,
-                            |                                                             |-> deliver -> finalize
-                            `-> build_weather ----------------------------------------------'
+                            |                                                             |-> deliver -> purge_old_data
+                            `-> build_weather ----------------------------------------------'                    -> finalize
 
 build_weather chay song song va doc lap voi nhanh tin tuc: khong co bai tin nao
 thi van phai co du bao, va Open-Meteo hong thi khong duoc keo do ca bo tin tuc.
@@ -156,6 +156,18 @@ def daily_news_digest():
 
         return pipeline.deliver_all(pipeline_run_id, date.fromisoformat(digest_day))
 
+    @task.external_python(python=APP_PYTHON, trigger_rule=TriggerRule.ALL_DONE,
+                          retries=1)
+    def purge_old_data() -> dict:
+        """Don du lieu qua han. ALL_DONE: run hong thi van phai don.
+
+        Chay sau `deliver` chu khong truoc: neu don truoc ma pipeline dang doc
+        du lieu thi VACUUM se tranh chap khoa mot cach vo ich.
+        """
+        from news_bot import pipeline
+
+        return pipeline.purge_old_data()
+
     @task.external_python(python=APP_PYTHON, trigger_rule=TriggerRule.ALL_DONE)
     def finalize(pipeline_run_id: str, digest: dict, health: dict, delivery: dict,
                  weather: dict) -> None:
@@ -198,6 +210,7 @@ def daily_news_digest():
 
     health >> digest
     [digest, weather] >> sent
+    sent >> purge_old_data()
     finalize(pipeline_run_id, digest, health, sent, weather)
 
 

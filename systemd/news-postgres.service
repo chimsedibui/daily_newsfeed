@@ -1,0 +1,25 @@
+[Unit]
+Description=news-bot Postgres (rootless)
+After=network.target
+
+[Service]
+# Type=exec: systemd so huu chinh tien trinh postgres. Type=forking + pg_ctl se
+# treo khi server da chay san, vi pg_ctl thoat ngay ma khong fork gi.
+Type=exec
+WorkingDirectory=__REPO__
+ExecStartPre=/usr/bin/env bash "__REPO__/scripts/pg.sh" init
+ExecStart=/usr/bin/env bash "__REPO__/scripts/pg.sh" serve
+# KHONG dat ExecStartPost o day: no chay khi server chua nhan ket noi, va tien
+# trinh con cua no ket lai trong cgroup lam lenh stop treo cho den khi bi SIGKILL.
+# Tao database la viec cai dat mot lan - systemd/install.sh lo.
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=120
+TimeoutStopSec=30
+# SIGINT = fast shutdown cua Postgres. control-group de moi tien trinh con
+# cung duoc don sach.
+KillSignal=SIGINT
+KillMode=control-group
+
+[Install]
+WantedBy=default.target
