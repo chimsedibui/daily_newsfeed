@@ -21,7 +21,15 @@ class Settings(BaseSettings):
     google_chat_thread_per_day: bool = True
 
     # LLM
+    # openai | vertex. Vertex dung ADC (gcloud auth application-default login
+    # hoac GOOGLE_APPLICATION_CREDENTIALS tro toi key cua service account).
+    llm_provider: str = "openai"
     openai_api_key: str = ""
+    vertex_project: str = ""
+    vertex_location: str = "global"
+    # -1 = de model tu quyet; 0 = tat han suy luan. Ho Gemini Flash suy luan mac
+    # dinh va tieu vai tram token cho mot ban tom tat 200 token.
+    vertex_thinking_budget: int = -1
     # Ca hai buoc dung bac gia re nhat cua OpenAI ($0.20/$1.20 per MTok).
     # Day la rang buoc ngan sach cua du an, khong phai mac dinh ky thuat.
     summarizer_model: str = "gpt-5.6-luna"

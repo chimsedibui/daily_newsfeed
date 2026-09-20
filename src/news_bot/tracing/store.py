@@ -180,10 +180,11 @@ class TraceStore:
                 text(
                     """
                     INSERT INTO llm_call (run_id, span_id, model, purpose, input_tokens,
-                                          output_tokens, cache_read_tokens, cost_usd,
+                                          output_tokens, cache_read_tokens,
+                                          reasoning_tokens, cost_usd,
                                           latency_ms, prompt_preview, output_preview, error)
                     VALUES (:run_id, :span_id, :model, :purpose, :inp, :out, :cache,
-                            :cost, :latency, :pprev, :oprev, :error)
+                            :reason, :cost, :latency, :pprev, :oprev, :error)
                     """
                 ),
                 {
@@ -194,6 +195,7 @@ class TraceStore:
                     "inp": usage.get("input_tokens", 0),
                     "out": usage.get("output_tokens", 0),
                     "cache": usage.get("cache_read_tokens", 0),
+                    "reason": usage.get("reasoning_tokens", 0),
                     "cost": cost_usd,
                     "latency": latency_ms,
                     "pprev": truncate(prompt_preview, 1000),

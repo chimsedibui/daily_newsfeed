@@ -70,6 +70,8 @@ CREATE TABLE IF NOT EXISTS llm_call (
     input_tokens      INTEGER   DEFAULT 0,
     output_tokens     INTEGER   DEFAULT 0,
     cache_read_tokens INTEGER   DEFAULT 0,
+    -- Gemini bao token suy luan tach rieng nhung van tinh tien theo gia output.
+    reasoning_tokens  INTEGER   DEFAULT 0,
     cost_usd          NUMERIC(12,6) DEFAULT 0,
     latency_ms        INTEGER,
     prompt_preview    TEXT,
@@ -78,6 +80,7 @@ CREATE TABLE IF NOT EXISTS llm_call (
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_llm_run ON llm_call (run_id, created_at);
+ALTER TABLE llm_call ADD COLUMN IF NOT EXISTS reasoning_tokens INTEGER DEFAULT 0;
 
 -- Log có cấu trúc, ghi cùng transaction với pipeline (structlog -> đây).
 CREATE TABLE IF NOT EXISTS app_log (
