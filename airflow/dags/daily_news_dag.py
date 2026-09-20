@@ -47,11 +47,10 @@ from airflow.utils.trigger_rule import TriggerRule
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# Interpreter cua venv app. Doi duong dan qua bien moi truong khi deploy.
+# Interpreter cua venv app.
 APP_PYTHON = os.environ.get("NEWS_APP_PYTHON", str(REPO_ROOT / ".venv" / "bin" / "python"))
 
 LOCAL_TZ = pendulum.timezone("Asia/Ho_Chi_Minh")
-# Ngay nghiep vu theo gio VN, dang YYYY-MM-DD.
 DS_LOCAL = '{{ logical_date.in_timezone("Asia/Ho_Chi_Minh") | ds }}'
 
 default_args = {

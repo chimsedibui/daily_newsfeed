@@ -36,7 +36,7 @@ def make_digest(n: int = 3, summary_len: int = 200, group: str = "serious") -> D
 def test_card_has_header_and_one_section_per_item():
     payload = build_card_message(make_digest(3))
     card = payload["cardsV2"][0]["card"]
-    # Header mang icon cua nhom de phan biet ba ban tin trong cung mot thread.
+    # Icon cua nhom de phan biet ba ban tin gui lien nhau.
     assert card["header"]["title"] == "📊 Lai suat giam, AI len ngoi"
     assert card["header"]["subtitle"] == "Tin nghiêm túc · 20/09/2026"
     # 1 section overview + 3 section tin + 1 section footer

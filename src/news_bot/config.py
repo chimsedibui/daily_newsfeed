@@ -16,16 +16,12 @@ class Settings(BaseSettings):
         env_file=(REPO_ROOT / ".env"), env_file_encoding="utf-8", extra="ignore"
     )
 
-    # Delivery
     google_chat_webhook_url: str = ""
     # false = moi ban tin la mot message rieng o cuoi space. Gom vao thread
     # thi cac message sau nam an trong thread va de bi bo qua - chi tien khi
     # thu nghiem. Mac dinh cho chay that la false.
     google_chat_thread_per_day: bool = False
 
-    # LLM
-    # openai | vertex. Vertex dung ADC (gcloud auth application-default login
-    # hoac GOOGLE_APPLICATION_CREDENTIALS tro toi key cua service account).
     # Thu tu uu tien, cach nhau dau phay. Provider dau chuoi hong kieu he
     # thong thi tu dong roi xuong cai tiep theo trong cung tien trinh.
     #   gemini = Developer API qua API key. Key khong het han.
@@ -36,8 +32,8 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     vertex_project: str = ""
     vertex_location: str = "global"
-    # -1 = de model tu quyet; 0 = tat han suy luan. Ho Gemini Flash suy luan mac
-    # dinh va tieu vai tram token cho mot ban tom tat 200 token.
+    # 0 = tat suy luan; -1 = de model tu quyet. Ho Flash bat mac dinh va tieu
+    # ~750 token nghi cho mot ban tom tat 250 token.
     vertex_thinking_budget: int = -1
     # Chi ghi de model cho provider DAU chuoi. De trong = dung mac dinh cua
     # tung provider trong llm.PROVIDER_MODELS.
@@ -45,11 +41,9 @@ class Settings(BaseSettings):
     editor_model: str = ""
     llm_max_concurrency: int = 4
 
-    # Storage
     postgres_dsn: str = "postgresql+psycopg://news:news@localhost:5432/news"
     db_schema: str = "news"
 
-    # Pipeline
     news_timezone: str = "Asia/Ho_Chi_Minh"
     lookback_hours: int = 24
     max_articles_per_source: int = 40
@@ -77,7 +71,6 @@ class Settings(BaseSettings):
     # keo theo toan bo trace; article khong con ban tin nao tro toi cung bi xoa.
     retention_days: int = 14
 
-    # Ops
     log_level: str = "INFO"
     log_json: bool = True
     dry_run: bool = False

@@ -25,7 +25,6 @@ log = get_logger(__name__)
 #   Vertex: cloud.google.com/vertex-ai/generative-ai/pricing (vung global, <=200K)
 # Ca ba doc ngay 20/09/2026.
 PRICING: dict[str, dict[str, float]] = {
-    # ---- OpenAI ----
     "gpt-6-astra":   {"input": 10.00, "cached_input": 1.00, "output": 50.00},
     "gpt-5.6-sol":   {"input": 4.00,  "cached_input": 0.40, "output": 20.00},
     "gpt-5.6-terra": {"input": 2.00,  "cached_input": 0.20, "output": 12.00},
@@ -36,7 +35,6 @@ PRICING: dict[str, dict[str, float]] = {
     "gpt-5-nano":    {"input": 0.05,  "cached_input": 0.005, "output": 0.40},
     "gpt-5-mini":    {"input": 0.25,  "cached_input": 0.025, "output": 2.00},
 
-    # ---- Gemini (Developer API va Vertex cung gia o cac model nay) ----
     # Gia khuyen mai cua ho 3.x Flash het han 31/12/2026, sau do gap doi.
     "gemini-3.8-flash":      {"input": 0.75, "cached_input": 0.075, "output": 3.75},
     "gemini-3.7-flash":      {"input": 0.75, "cached_input": 0.075, "output": 3.75},

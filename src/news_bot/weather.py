@@ -21,7 +21,7 @@ log = get_logger(__name__)
 
 API_URL = "https://api.open-meteo.com/v1/forecast"
 
-# WMO weather code -> (mo ta, icon). Nguon: bang ma WW cua Open-Meteo.
+# Bang ma WW cua Open-Meteo.
 WMO: dict[int, tuple[str, str]] = {
     0: ("Trời quang", "☀️"),
     1: ("Nắng nhẹ", "🌤️"), 2: ("Có mây", "⛅"), 3: ("Nhiều mây", "☁️"),

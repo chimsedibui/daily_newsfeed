@@ -54,7 +54,6 @@ def cluster_articles(state: GraphState, config: RunnableConfig) -> GraphState:
             if not placed:
                 clusters.append([art])
 
-        # dua ban dai dien len dau moi cluster
         ordered = []
         for group in clusters:
             head = _representative(group)

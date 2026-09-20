@@ -61,7 +61,6 @@ WEATHER = Group(
 
 ALL: dict[str, Group] = {g.key: g for g in (SERIOUS, LIFE, WEATHER)}
 
-# Cac nhom duoc dung tu feed tin tuc (khong gom weather).
 NEWS_GROUPS: tuple[Group, ...] = (SERIOUS, LIFE)
 
 

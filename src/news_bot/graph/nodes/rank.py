@@ -23,43 +23,37 @@ from ..state import GraphState
 
 log = get_logger(__name__)
 
-# Tu khoa uu tien theo tung nhom. Day la cho chinh "khau vi" ban tin.
+# Cho chinh "khau vi" ban tin.
 BOOST_KEYWORDS: dict[str, dict[str, float]] = {
     "serious": {
-        # AI / paper / kien truc mo hinh
         "ai": 1.5, "trí tuệ nhân tạo": 1.8, "llm": 2.0, "mô hình ngôn ngữ": 2.0,
         "transformer": 1.8, "benchmark": 1.2, "open source": 1.0, "paper": 1.2,
         "gpt": 1.5, "gemini": 1.5, "claude": 1.5, "llama": 1.3, "grok": 1.2,
         "reasoning": 1.2, "agent": 1.0, "inference": 1.0, "fine-tun": 1.0,
         "chip": 1.2, "gpu": 1.3, "nvidia": 1.3, "bán dẫn": 1.2,
-        # FED / chinh sach tien te
         "fed": 2.5, "federal reserve": 2.5, "fomc": 2.5, "lãi suất": 2.0,
         "interest rate": 2.0, "inflation": 1.8, "lạm phát": 1.8,
         "monetary policy": 2.0, "chính sách tiền tệ": 2.0, "ecb": 1.5,
-        # Quy / thi truong
         "blackrock": 1.8, "vanguard": 1.5, "hedge fund": 1.5, "quỹ đầu tư": 1.5,
         "etf": 1.3, "ipo": 1.3, "chứng khoán": 1.2, "vn-index": 1.5,
         "s&p 500": 1.3, "nasdaq": 1.3, "tỷ giá": 1.2, "trái phiếu": 1.2,
         "nâng hạng": 1.5, "ftse": 1.3, "msci": 1.3,
-        # Chinh tri the gioi
         "sanction": 1.2, "trừng phạt": 1.2, "thuế quan": 1.5, "tariff": 1.5,
         "thượng đỉnh": 1.2, "hiệp định": 1.0,
     },
     "life": {
-        # Xe
         "ra mắt": 1.5, "mẫu xe": 1.5, "ô tô": 1.2, "xe máy": 1.2,
         "giá xe": 1.5, "đánh giá xe": 1.5, "xe điện": 1.3, "vinfast": 1.2,
         "honda": 1.0, "toyota": 1.0, "yamaha": 1.0,
-        # Bong chuyen / bong da - user quan tam nhat trong nhom the thao
+        # Hai mon duoc quan tam nhat -> diem cao hon phan con lai cua the thao
         "bóng chuyền": 2.5, "bóng đá": 1.8, "tuyển việt nam": 1.8,
         "v-league": 1.5, "ngoại hạng anh": 1.3, "champions league": 1.3,
         "world cup": 1.5, "sea games": 1.3, "vtv cup": 2.0,
-        # Du lich
         "du lịch": 1.2, "điểm đến": 1.2, "vé máy bay": 1.3, "tour": 0.8,
     },
 }
 
-# Chu de ro rang khong muon thay trong nhom life.
+# Tru diem, khong phai loai bo han.
 PENALTY_KEYWORDS: dict[str, dict[str, float]] = {
     "life": {"sao việt": 2.0, "lộ ảnh": 2.0, "gây sốt": 1.5, "đại gia": 1.5},
     "serious": {},

@@ -49,7 +49,6 @@ def _rows(sql: str, params: dict | None = None) -> list[dict]:
         return [dict(r) for r in s.execute(text(sql), params or {}).mappings().all()]
 
 
-# ---------------------------------------------------------------- truy van
 RUNS = """
     SELECT run_id, logical_date, trigger, status, started_at, duration_ms,
            articles_new, articles_loaded, articles_selected,
@@ -186,7 +185,6 @@ def render() -> str:
         f"{down_note} · tự làm mới mỗi 60 giây</p>",
     ]
 
-    # ---- the tong quan ----
     parts.append("<div class='cards'>")
     for label, value, cls in [
         ("Lần chạy gần nhất", _esc(last.get("status", "chưa có")),
@@ -204,7 +202,6 @@ def render() -> str:
         )
     parts.append("</div>")
 
-    # ---- ban tin gan day ----
     parts.append("<h2>Bản tin gần đây</h2>")
     if not digests:
         parts.append("<p class='sub'>Chưa có bản tin nào.</p>")
@@ -224,7 +221,6 @@ def render() -> str:
             parts.append(f"<div class='item'>{_esc(title)}{link}</div>")
         parts.append("</details>")
 
-    # ---- cac lan chay ----
     parts.append("<h2>Các lần chạy</h2><div class='scroll'><table><tr>"
                  "<th>Bắt đầu</th><th>Nguồn kích hoạt</th><th>Trạng thái</th>"
                  "<th>Thời lượng</th><th>Bài mới</th><th>Tin chọn</th><th>USD</th></tr>")
@@ -238,7 +234,6 @@ def render() -> str:
         )
     parts.append("</table></div>")
 
-    # ---- suc khoe nguon ----
     parts.append("<h2>Nguồn tin</h2><div class='scroll'><table><tr>"
                  "<th>Nguồn</th><th>OK</th><th>HTTP</th><th>Bài</th><th>Mới</th>"
                  "<th>Độ trễ</th><th>Bài mới nhất</th><th>Lỗi</th></tr>")
@@ -255,7 +250,6 @@ def render() -> str:
         )
     parts.append("</table></div>")
 
-    # ---- chi phi + dung luong ----
     parts.append("<h2>Chi phí LLM (7 ngày)</h2><div class='scroll'><table><tr>"
                  "<th>Provider</th><th>Model</th><th>Việc</th><th>Lượt</th>"
                  "<th>Lỗi</th><th>Token vào</th><th>Token ra</th>"

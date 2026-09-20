@@ -105,7 +105,6 @@ def extract_article(html: str, url: str) -> dict[str, Any]:
         "published_at": None, "image_url": None, "lang": "vi", "source_kind": None,
     }
 
-    # --- 1. JSON-LD ---
     for node in _iter_jsonld(soup):
         types = node.get("@type")
         types = {types} if isinstance(types, str) else set(types or [])
@@ -129,7 +128,6 @@ def extract_article(html: str, url: str) -> dict[str, Any]:
         out["source_kind"] = "json-ld"
         break
 
-    # --- 2. meta tags ---
     def meta(*names: str) -> str | None:
         for n in names:
             tag = soup.find("meta", attrs={"property": n}) or soup.find(
@@ -155,7 +153,6 @@ def extract_article(html: str, url: str) -> dict[str, Any]:
     if out["source_kind"] is None and out["title"]:
         out["source_kind"] = "meta"
 
-    # --- 3. DOM ---
     if not out["body"]:
         out["body"] = _body_from_dom(soup) or None
         if out["body"]:

@@ -50,7 +50,6 @@ class TraceStore:
         self.run_id = run_id or str(uuid.uuid4())
         self._t0 = time.perf_counter()
 
-    # ---------- run ----------
     def start_run(
         self,
         logical_date: date,
@@ -117,7 +116,6 @@ class TraceStore:
         _CURRENT_RUN.set(self.run_id)
         set_db_sink(self._write_log)
 
-    # ---------- span ----------
     def open_span(self, name: str, kind: str = "node", attributes: dict | None = None,
                   input_preview: Any = None) -> str:
         span_id = str(uuid.uuid4())
@@ -164,7 +162,6 @@ class TraceStore:
                 },
             )
 
-    # ---------- llm ----------
     def record_llm(self, provider: str, model: str, purpose: str, usage: dict,
                    latency_ms: int,
                    cost_usd: float, prompt_preview: str = "", output_preview: str = "",
@@ -201,7 +198,6 @@ class TraceStore:
                 },
             )
 
-    # ---------- log sink ----------
     def _write_log(self, level: str, logger: str, event: str, context: dict) -> None:
         with session_scope() as s:
             s.execute(

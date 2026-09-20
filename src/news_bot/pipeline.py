@@ -160,7 +160,6 @@ def deliver(run_id: str, digest_id: int, logical_date: date) -> dict:
         return {"digest_id": digest_id, "status": "already_sent"}
 
     s = get_settings()
-    # Cung threadKey cho ca ba ban tin -> chung gom vao mot thread theo ngay.
     thread_key = (
         f"daily-news-{logical_date.isoformat()}" if s.google_chat_thread_per_day else None
     )
