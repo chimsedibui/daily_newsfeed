@@ -1,6 +1,8 @@
 """Node 6: bien tap ban tin - chon tin, sap thu tu, viet doan mo dau."""
 from __future__ import annotations
 
+from datetime import date
+
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
@@ -57,10 +59,13 @@ def _catalog(summaries) -> str:
 def _fallback(summaries, limit: int, digest_date: str) -> Digest:
     """Khong co LLM (dry-run) hoac LLM loi -> van ra duoc ban tin theo importance."""
     ranked = sorted(summaries, key=lambda x: -x.importance)[:limit]
+    # Chuoi nay hien thi truc tiep trong card Google Chat nen phai co dau -
+    # quy uoc viet khong dau chi ap dung cho comment va dinh danh trong code.
+    day = date.fromisoformat(digest_date).strftime("%d/%m/%Y")
     return Digest(
         digest_date=digest_date,
-        headline=f"Ban tin ngay {digest_date}",
-        overview=f"{len(ranked)} tin dang chu y trong 24 gio qua.",
+        headline=f"Bản tin ngày {day}",
+        overview=f"{len(ranked)} tin đáng chú ý trong 24 giờ qua.",
         items=[],
         stats={"mode": "fallback"},
     )

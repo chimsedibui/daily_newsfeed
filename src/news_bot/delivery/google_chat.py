@@ -9,6 +9,7 @@ Tai lieu: developers.google.com/workspace/chat/quickstart/webhooks
 from __future__ import annotations
 
 import json
+from datetime import date
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import httpx
@@ -60,6 +61,14 @@ def _escape(text: str) -> str:
     return (text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def _vn_date(iso_date: str) -> str:
+    """2026-09-20 -> 20/09/2026. Card hien thi cho nguoi Viet doc."""
+    try:
+        return date.fromisoformat(iso_date).strftime("%d/%m/%Y")
+    except ValueError:
+        return iso_date
+
+
 def build_card_message(digest: Digest) -> dict:
     """Dung 1 message cardsV2 tu Digest."""
     sections = [
@@ -102,7 +111,7 @@ def build_card_message(digest: Digest) -> dict:
                 "card": {
                     "header": {
                         "title": truncate(digest.headline, 80),
-                        "subtitle": f"Bản tin ngày {digest.digest_date}",
+                        "subtitle": f"Bản tin ngày {_vn_date(digest.digest_date)}",
                         "imageType": "CIRCLE",
                     },
                     "sections": sections,
