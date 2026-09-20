@@ -19,6 +19,9 @@ PGDATA="${PGDATA:-$REPO/.pgdata}"
 PGPORT="${PGPORT:-$NEWS_PG_PORT}"
 PGAPPUSER="${PGAPPUSER:-news}"
 PGDB="${PGDB:-news}"
+# PHAI export: run_sql goi python doc tu os.environ. Khong export thi no roi ve
+# mac dinh 5432 va treo cho den khi timeout - im lang va kho doan.
+export PGPORT PGAPPUSER PGDB
 PY="${PY:-$REPO/.venv/bin/python}"
 LOG="$PGDATA/server.log"
 

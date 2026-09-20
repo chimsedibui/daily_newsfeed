@@ -26,8 +26,12 @@ class Settings(BaseSettings):
     # LLM
     # openai | vertex. Vertex dung ADC (gcloud auth application-default login
     # hoac GOOGLE_APPLICATION_CREDENTIALS tro toi key cua service account).
+    # openai | vertex | gemini
+    #   vertex = Vertex AI qua ADC, tinh tien vao project GCP.
+    #   gemini = Gemini Developer API qua API key, tinh tien vao chinh key do.
     llm_provider: str = "openai"
     openai_api_key: str = ""
+    gemini_api_key: str = ""
     vertex_project: str = ""
     vertex_location: str = "global"
     # -1 = de model tu quyet; 0 = tat han suy luan. Ho Gemini Flash suy luan mac

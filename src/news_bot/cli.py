@@ -103,7 +103,7 @@ def run_all(
     stale = [r["source_id"] for r in ingested if r["stale"]]
     pipeline.finalize(
         run_id,
-        "partial" if (failed or stale) else "success",
+        pipeline.run_status(failed, stale, len(ingested)),
         {**(result.get("metrics") or {}),
          "new_articles": sum(r["new"] for r in ingested),
          "failed_sources": failed,
@@ -180,7 +180,8 @@ def show_config() -> None:
     s = get_settings()
     data = s.model_dump()
     # Chi giu tien to du de nhan dang (sk-proj, https://chat...), khong lo phan bi mat.
-    for key in ("openai_api_key", "google_chat_webhook_url", "postgres_dsn"):
+    for key in ("openai_api_key", "gemini_api_key", "google_chat_webhook_url",
+                "postgres_dsn"):
         value = str(data.get(key) or "")
         if value:
             data[key] = f"{value[:8]}...({len(value)} ky tu)"

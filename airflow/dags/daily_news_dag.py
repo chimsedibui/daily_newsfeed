@@ -121,7 +121,7 @@ def daily_news_digest():
                 f"Chi {ratio:.0%} nguon OK (nguong {threshold:.0%}). Hong: {failed}"
             )
         return {"failed_sources": failed, "stale_sources": stale,
-                "new_articles": total_new}
+                "new_articles": total_new, "total_sources": len(results)}
 
     @task.external_python(python=APP_PYTHON, retries=1,
                           execution_timeout=timedelta(minutes=20))
@@ -179,12 +179,18 @@ def daily_news_digest():
         delivery = delivery or {}
         weather = weather or {}
 
-        status = "success"
+        from news_bot.pipeline import run_status
+
         if delivery.get("status") not in ("sent", "skipped", "already_sent"):
             status = "failed"
-        elif (health.get("failed_sources") or health.get("stale_sources")
-              or weather.get("skipped")):
+        elif weather.get("skipped"):
             status = "partial"
+        else:
+            status = run_status(
+                health.get("failed_sources", []),
+                health.get("stale_sources", []),
+                health.get("total_sources", 0),
+            )
 
         pipeline.finalize(
             pipeline_run_id,

@@ -21,6 +21,9 @@ from .weather import build_weather_digest
 
 log = get_logger(__name__)
 
+# Qua ty le nay thi run bi ha xuong `partial`. Duoi nguong = blip nhat thoi.
+FAILED_SOURCE_RATIO = 0.1
+
 
 def bootstrap() -> None:
     s = get_settings()
@@ -36,8 +39,14 @@ def preflight() -> dict:
     problems = []
     if not s.dry_run and not s.google_chat_webhook_url:
         problems.append("thieu GOOGLE_CHAT_WEBHOOK_URL")
-    if not s.dry_run and not s.openai_api_key:
-        problems.append("thieu OPENAI_API_KEY")
+    # Moi provider can mot thu khac nhau - kiem tra dung thu no can.
+    if not s.dry_run:
+        if s.llm_provider == "openai" and not s.openai_api_key:
+            problems.append("thieu OPENAI_API_KEY")
+        elif s.llm_provider == "gemini" and not s.gemini_api_key:
+            problems.append("thieu GEMINI_API_KEY")
+        elif s.llm_provider == "vertex" and not s.vertex_project:
+            problems.append("thieu VERTEX_PROJECT")
     log.info("preflight.done", sources=len(sources), problems=problems)
     return {"sources": [x.id for x in sources], "problems": problems}
 
@@ -193,6 +202,21 @@ def deliver_all(run_id: str, logical_date: date) -> dict:
     overall = "sent" if statuses <= {"sent", "already_sent"} else "skipped"
     log.info("deliver.done", run_id=run_id, sent=sent)
     return {"status": overall, "sent": sent}
+
+
+def run_status(failed: list[str], stale: list[str], total: int) -> str:
+    """`partial` hay `success`?
+
+    Voi 42 nguon, mot cu 404 nhat thoi la chuyen thuong ngay. Gan `partial` cho
+    moi blip se lam nhan do mat y nghia - den luc hong that thi khong ai de y.
+    Chi ha trang thai khi mot phan dang ke nguon hong, hoac khi co nguon dong
+    bang (dau hieu URL da doi, phai sua tay).
+    """
+    if stale:
+        return "partial"
+    if total and len(failed) / total > FAILED_SOURCE_RATIO:
+        return "partial"
+    return "success"
 
 
 def purge_old_data(days: int | None = None, dry_run: bool = False) -> dict:

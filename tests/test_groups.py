@@ -213,3 +213,24 @@ def test_purge_days_none_uses_configured_default(monkeypatch):
     out = retention.purge(days=None, dry_run=True)
     assert out["days"] == retention.get_settings().retention_days
     assert captured["days"] == out["days"]
+
+
+def test_thinking_budget_is_not_sent_to_lite_models():
+    """gemini-3.5-flash-lite tra 400 INVALID_ARGUMENT khi nhan thinking_budget."""
+    from news_bot.llm import _wants_thinking_budget
+
+    assert not _wants_thinking_budget("gemini-3.5-flash-lite")
+    assert not _wants_thinking_budget("gemini-3.1-flash-lite")
+    assert _wants_thinking_budget("gemini-3.8-flash")
+    assert _wants_thinking_budget("gemini-3.7-flash")
+
+
+def test_one_transient_source_failure_does_not_downgrade_the_run():
+    """42 nguon ma mot cu 404 nhat thoi cung gan partial thi nhan do vo nghia."""
+    from news_bot.pipeline import run_status
+
+    assert run_status(["fed_press_all"], [], 42) == "success"
+    assert run_status(["a", "b", "c", "d", "e"], [], 42) == "partial"
+    # Nguon dong bang luon la partial: URL da doi, phai sua tay.
+    assert run_status([], ["import_ai"], 42) == "partial"
+    assert run_status([], [], 0) == "success"

@@ -41,6 +41,9 @@ PRICING: dict[str, dict[str, float]] = {
     "gemini-3.5-flash-lite": {"input": 0.30, "cached_input": 0.03,  "output": 2.50},
     "gemini-2.5-flash-lite": {"input": 0.10, "cached_input": 0.01,  "output": 0.40},
     "gemini-3.1-pro-preview": {"input": 2.00, "cached_input": 0.20, "output": 12.00},
+    # Chi co tren Gemini Developer API. Re nhat trong cac ban lite con mo cho
+    # nguoi dung moi ($0.25/$1.50 so voi $0.30/$2.50 cua 3.5-flash-lite).
+    "gemini-3.1-flash-lite": {"input": 0.25, "cached_input": 0.025, "output": 1.50},
 }
 
 
@@ -92,6 +95,16 @@ def extract_usage(response: Any) -> dict[str, int]:
     }
 
 
+def _wants_thinking_budget(model: str) -> bool:
+    """Chi gui thinking_budget cho model thuc su biet suy luan.
+
+    Ban -lite khong suy luan (reasoning_tokens luon 0), va it nhat
+    gemini-3.5-flash-lite tren Developer API tra 400 INVALID_ARGUMENT khi nhan
+    tham so nay. Gui vao la vo ich va co the lam hong request.
+    """
+    return "lite" not in model.lower()
+
+
 def _build_openai(model: str, max_tokens: int):
     from langchain_openai import ChatOpenAI
 
@@ -120,15 +133,39 @@ def _build_vertex(model: str, max_tokens: int):
         "max_output_tokens": max_tokens,
         "max_retries": 3,
     }
-    # Ho Flash suy luan mac dinh va tieu vai tram token cho mot bai tom tat 200
-    # token. thinking_budget=0 tat han; -1 de model tu quyet. Ban -lite khong
-    # suy luan nen tham so nay vo hai voi chung.
-    if s.vertex_thinking_budget >= 0:
+    # Ho Flash suy luan mac dinh va tieu vai tram token cho mot ban tom tat 200
+    # token. thinking_budget=0 tat han; -1 de model tu quyet.
+    if s.vertex_thinking_budget >= 0 and _wants_thinking_budget(model):
         kwargs["thinking_budget"] = s.vertex_thinking_budget
     return ChatGoogleGenerativeAI(**kwargs)
 
 
-BUILDERS = {"openai": _build_openai, "vertex": _build_vertex}
+def _build_gemini(model: str, max_tokens: int):
+    """Gemini Developer API: xac thuc bang API key, KHONG qua Vertex/ADC.
+
+    Khac biet dang ke voi `vertex`: tien di vao tai khoan gan voi API key chu
+    khong vao project GCP. Doi lai, mot so model cu (vi du gemini-2.5-flash-lite)
+    khong con mo cho nguoi dung moi tren duong nay.
+    """
+    from langchain_google_genai import ChatGoogleGenerativeAI
+
+    s = get_settings()
+    kwargs: dict[str, Any] = {
+        "model": model,
+        "google_api_key": s.gemini_api_key or None,
+        "max_output_tokens": max_tokens,
+        "max_retries": 3,
+    }
+    if s.vertex_thinking_budget >= 0 and _wants_thinking_budget(model):
+        kwargs["thinking_budget"] = s.vertex_thinking_budget
+    return ChatGoogleGenerativeAI(**kwargs)
+
+
+BUILDERS = {
+    "openai": _build_openai,
+    "vertex": _build_vertex,
+    "gemini": _build_gemini,
+}
 
 
 @lru_cache(maxsize=12)
