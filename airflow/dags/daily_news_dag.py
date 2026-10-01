@@ -53,7 +53,7 @@ APP_PYTHON = os.environ.get("NEWS_APP_PYTHON", str(REPO_ROOT / ".venv" / "bin" /
 LOCAL_TZ = pendulum.timezone("Asia/Ho_Chi_Minh")
 # Ngay cua ban tin = NGAY CHAY, khong phai `logical_date`. Voi lich cron,
 # logical_date la DAU data interval, tuc ngay lam viec TRUOC do: run luc
-# 08:00 thu Hai se co logical_date la thu Sau. `data_interval_end` chinh la
+# 07:30 thu Hai se co logical_date la thu Sau. `data_interval_end` chinh la
 # thoi diem kich hoat, nen ban tin mang dung ngay no duoc gui.
 DS_LOCAL = '{{ data_interval_end.in_timezone("Asia/Ho_Chi_Minh") | ds }}'
 
@@ -70,7 +70,7 @@ default_args = {
 @dag(
     dag_id="daily_news_digest",
     description="Tong hop tin tuc VN hang ngay va ban len Google Chat",
-    schedule="0 8 * * 1-5",          # 08:00 gio VN, thu 2 - thu 6
+    schedule="30 7 * * 1-5",         # 07:30 gio VN, thu 2 - thu 6
     start_date=datetime(2026, 9, 1, tzinfo=LOCAL_TZ),
     catchup=False,
     max_active_runs=1,

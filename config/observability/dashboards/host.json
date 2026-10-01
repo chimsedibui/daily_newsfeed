@@ -810,7 +810,7 @@
       "id": 13,
       "type": "timeseries",
       "title": "Thong luong mang",
-      "description": "Luc 08:00 se thay mot gai nhon: 14 feed RSS + goi LLM + gui Google Chat.",
+      "description": "Luc 07:30 se thay mot gai nhon: 14 feed RSS + goi LLM + gui Google Chat.",
       "datasource": {
         "type": "prometheus",
         "uid": "news-prometheus"

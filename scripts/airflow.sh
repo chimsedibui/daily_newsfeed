@@ -17,6 +17,8 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 AF_PY="$REPO/.venv-airflow/bin/python"
 AF="$REPO/.venv-airflow/bin/airflow"
 
+# `airflow standalone` goi lai chinh `airflow` qua PATH; systemd khong co venv.
+export PATH="$REPO/.venv-airflow/bin:$PATH"
 export AIRFLOW_HOME="${AIRFLOW_HOME:-$REPO/.airflow}"
 export AIRFLOW__CORE__DAGS_FOLDER="$REPO/airflow/dags"
 export AIRFLOW__CORE__LOAD_EXAMPLES=False

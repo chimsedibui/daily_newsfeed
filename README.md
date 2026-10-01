@@ -5,7 +5,7 @@ Bot tổng hợp tin tức hằng ngày, bắn bản tin lên **Google Chat** qu
 - **Nguồn tin**: 42 feed đang bật — 40 RSS + 1 Hugging Face Papers + 1 GitHub Trending, từ 31 publisher (VnExpress, Thanh Niên, CafeF, VnEconomy, BBC World, CNBC, Federal Reserve, ECB, SEC, Hacker News, MIT Technology Review, TechCrunch…), trải 15 chuyên mục.
 - **Xử lý**: LangGraph 7 node — gom trùng → xếp hạng → bổ sung fulltext → tóm tắt → biên tập → render card.
 - **Trace & logging**: Postgres (`pipeline_run`, `node_span`, `llm_call`, `app_log`, `source_health`).
-- **Lịch chạy**: Airflow DAG `daily_news_digest`, 08:00 giờ VN, T2–T6.
+- **Lịch chạy**: Airflow DAG `daily_news_digest`, 07:30 giờ VN, T2–T6.
 - **Quan sát**: trang trạng thái `:18081` lo nghiệp vụ, Grafana `:18091` lo tài nguyên máy.
 
 Báo cáo khảo sát nguồn tin: [docs/REPORT.md](docs/REPORT.md). Vận hành thường trú: [docs/OPERATIONS.md](docs/OPERATIONS.md).

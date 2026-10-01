@@ -211,7 +211,7 @@ def diagram_architecture():
     """
     N = [
         Node("box_af", 275, 45, 680, 292, "Airflow  ·  DAG daily_news_digest",
-             ["lịch 08:00 giờ VN, T2–T6  ·  mỗi task chạm app chạy bằng "
+             ["lịch 07:30 giờ VN, T2–T6  ·  mỗi task chạm app chạy bằng "
               "@task.external_python"], kind="group", group=True),
 
         Node("src", 45, 190, 200, 110, "42 nguồn tin",

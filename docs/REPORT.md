@@ -135,7 +135,7 @@ View `v_run_overview` gộp sẵn: số tin, số span, chi phí LLM, số ngu�
 
 ### 3.6 Airflow
 
-`schedule="0 8 * * 1-5"`, timezone `Asia/Ho_Chi_Minh`, `catchup=False`, `max_active_runs=1`.
+`schedule="30 7 * * 1-5"`, timezone `Asia/Ho_Chi_Minh`, `catchup=False`, `max_active_runs=1`.
 
 - **Fan-out theo nguồn** bằng `.expand()` → retry riêng từng feed, nhìn thấy ngay trên UI feed nào chết.
 - **`check_sources`** chặn trường hợp cả loạt feed đổi URL: dưới ngưỡng `news_min_source_success_ratio` (Airflow Variable, mặc định 0.5) thì fail cả DAG.
